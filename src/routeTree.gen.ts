@@ -9,38 +9,155 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SimulatorRouteImport } from './routes/simulator'
+import { Route as PakistanRouteImport } from './routes/pakistan'
+import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as CrisisExplorerRouteImport } from './routes/crisis-explorer'
+import { Route as CompareRouteImport } from './routes/compare'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as CountrySlugRouteImport } from './routes/country.$slug'
 
+const SimulatorRoute = SimulatorRouteImport.update({
+  id: '/simulator',
+  path: '/simulator',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PakistanRoute = PakistanRouteImport.update({
+  id: '/pakistan',
+  path: '/pakistan',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CrisisExplorerRoute = CrisisExplorerRouteImport.update({
+  id: '/crisis-explorer',
+  path: '/crisis-explorer',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CompareRoute = CompareRouteImport.update({
+  id: '/compare',
+  path: '/compare',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CountrySlugRoute = CountrySlugRouteImport.update({
+  id: '/country/$slug',
+  path: '/country/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/compare': typeof CompareRoute
+  '/crisis-explorer': typeof CrisisExplorerRoute
+  '/dashboard': typeof DashboardRoute
+  '/pakistan': typeof PakistanRoute
+  '/simulator': typeof SimulatorRoute
+  '/country/$slug': typeof CountrySlugRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/compare': typeof CompareRoute
+  '/crisis-explorer': typeof CrisisExplorerRoute
+  '/dashboard': typeof DashboardRoute
+  '/pakistan': typeof PakistanRoute
+  '/simulator': typeof SimulatorRoute
+  '/country/$slug': typeof CountrySlugRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/compare': typeof CompareRoute
+  '/crisis-explorer': typeof CrisisExplorerRoute
+  '/dashboard': typeof DashboardRoute
+  '/pakistan': typeof PakistanRoute
+  '/simulator': typeof SimulatorRoute
+  '/country/$slug': typeof CountrySlugRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/compare'
+    | '/crisis-explorer'
+    | '/dashboard'
+    | '/pakistan'
+    | '/simulator'
+    | '/country/$slug'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/compare'
+    | '/crisis-explorer'
+    | '/dashboard'
+    | '/pakistan'
+    | '/simulator'
+    | '/country/$slug'
+  id:
+    | '__root__'
+    | '/'
+    | '/compare'
+    | '/crisis-explorer'
+    | '/dashboard'
+    | '/pakistan'
+    | '/simulator'
+    | '/country/$slug'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CompareRoute: typeof CompareRoute
+  CrisisExplorerRoute: typeof CrisisExplorerRoute
+  DashboardRoute: typeof DashboardRoute
+  PakistanRoute: typeof PakistanRoute
+  SimulatorRoute: typeof SimulatorRoute
+  CountrySlugRoute: typeof CountrySlugRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/simulator': {
+      id: '/simulator'
+      path: '/simulator'
+      fullPath: '/simulator'
+      preLoaderRoute: typeof SimulatorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pakistan': {
+      id: '/pakistan'
+      path: '/pakistan'
+      fullPath: '/pakistan'
+      preLoaderRoute: typeof PakistanRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/crisis-explorer': {
+      id: '/crisis-explorer'
+      path: '/crisis-explorer'
+      fullPath: '/crisis-explorer'
+      preLoaderRoute: typeof CrisisExplorerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/compare': {
+      id: '/compare'
+      path: '/compare'
+      fullPath: '/compare'
+      preLoaderRoute: typeof CompareRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,12 +165,35 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/country/$slug': {
+      id: '/country/$slug'
+      path: '/country/$slug'
+      fullPath: '/country/$slug'
+      preLoaderRoute: typeof CountrySlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CompareRoute: CompareRoute,
+  CrisisExplorerRoute: CrisisExplorerRoute,
+  DashboardRoute: DashboardRoute,
+  PakistanRoute: PakistanRoute,
+  SimulatorRoute: SimulatorRoute,
+  CountrySlugRoute: CountrySlugRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
