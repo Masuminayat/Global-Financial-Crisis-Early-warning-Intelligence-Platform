@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/AppShell";
 import { categoryColor, fmtNum, riskLevelColor } from "@/lib/format";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
+import { ClientChart } from "@/components/ClientChart";
 import { AlertTriangle, TrendingDown } from "lucide-react";
 
 export const Route = createFileRoute("/pakistan")({
