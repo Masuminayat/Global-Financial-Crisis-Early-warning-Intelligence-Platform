@@ -77,15 +77,14 @@ function Landing() {
             </span>
           </div>
           <nav className="hidden md:flex items-center gap-1 text-sm">
-            {[
-              ["Dashboard", "/"],
-              ["Countries", "/"],
-              ["Pakistan", "/"],
-              ["Compare", "/"],
-              ["Simulator", "/"],
-              ["Crises", "/"],
-              ["Copilot", "/"],
-            ].map(([label, to]) => (
+            {([
+              ["Dashboard", "/dashboard"],
+              ["Pakistan", "/pakistan"],
+              ["Compare", "/compare"],
+              ["Simulator", "/simulator"],
+              ["Crises", "/crisis-explorer"],
+              ["Copilot", "/copilot"],
+            ] as const).map(([label, to]) => (
               <Link key={label} to={to} className="rounded-md px-3 py-1.5 text-muted-foreground hover:bg-accent hover:text-foreground">
                 {label}
               </Link>
@@ -129,10 +128,10 @@ function Landing() {
             Built for analysts, policymakers, and traders.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <Link to="/" className="inline-flex items-center gap-2 rounded-md bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground ring-glow-cyan hover:bg-primary/90">
+            <Link to="/dashboard" className="inline-flex items-center gap-2 rounded-md bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground ring-glow-cyan hover:bg-primary/90">
               Open dashboard <ArrowUpRight className="h-4 w-4" />
             </Link>
-            <Link to="/" className="inline-flex items-center gap-2 rounded-md border border-border bg-surface-2 px-5 py-2.5 text-sm hover:bg-accent">
+            <Link to="/pakistan" className="inline-flex items-center gap-2 rounded-md border border-border bg-surface-2 px-5 py-2.5 text-sm hover:bg-accent">
               Explore Pakistan intelligence
             </Link>
           </div>
