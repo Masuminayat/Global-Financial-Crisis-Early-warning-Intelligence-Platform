@@ -13,6 +13,7 @@ import { Route as SimulatorRouteImport } from './routes/simulator'
 import { Route as PakistanRouteImport } from './routes/pakistan'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CrisisExplorerRouteImport } from './routes/crisis-explorer'
+import { Route as CopilotRouteImport } from './routes/copilot'
 import { Route as CompareRouteImport } from './routes/compare'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CountrySlugRouteImport } from './routes/country.$slug'
@@ -37,6 +38,11 @@ const CrisisExplorerRoute = CrisisExplorerRouteImport.update({
   path: '/crisis-explorer',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CopilotRoute = CopilotRouteImport.update({
+  id: '/copilot',
+  path: '/copilot',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CompareRoute = CompareRouteImport.update({
   id: '/compare',
   path: '/compare',
@@ -56,6 +62,7 @@ const CountrySlugRoute = CountrySlugRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/compare': typeof CompareRoute
+  '/copilot': typeof CopilotRoute
   '/crisis-explorer': typeof CrisisExplorerRoute
   '/dashboard': typeof DashboardRoute
   '/pakistan': typeof PakistanRoute
@@ -65,6 +72,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/compare': typeof CompareRoute
+  '/copilot': typeof CopilotRoute
   '/crisis-explorer': typeof CrisisExplorerRoute
   '/dashboard': typeof DashboardRoute
   '/pakistan': typeof PakistanRoute
@@ -75,6 +83,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/compare': typeof CompareRoute
+  '/copilot': typeof CopilotRoute
   '/crisis-explorer': typeof CrisisExplorerRoute
   '/dashboard': typeof DashboardRoute
   '/pakistan': typeof PakistanRoute
@@ -86,6 +95,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/compare'
+    | '/copilot'
     | '/crisis-explorer'
     | '/dashboard'
     | '/pakistan'
@@ -95,6 +105,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/compare'
+    | '/copilot'
     | '/crisis-explorer'
     | '/dashboard'
     | '/pakistan'
@@ -104,6 +115,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/compare'
+    | '/copilot'
     | '/crisis-explorer'
     | '/dashboard'
     | '/pakistan'
@@ -114,6 +126,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CompareRoute: typeof CompareRoute
+  CopilotRoute: typeof CopilotRoute
   CrisisExplorerRoute: typeof CrisisExplorerRoute
   DashboardRoute: typeof DashboardRoute
   PakistanRoute: typeof PakistanRoute
@@ -151,6 +164,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CrisisExplorerRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/copilot': {
+      id: '/copilot'
+      path: '/copilot'
+      fullPath: '/copilot'
+      preLoaderRoute: typeof CopilotRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/compare': {
       id: '/compare'
       path: '/compare'
@@ -178,6 +198,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CompareRoute: CompareRoute,
+  CopilotRoute: CopilotRoute,
   CrisisExplorerRoute: CrisisExplorerRoute,
   DashboardRoute: DashboardRoute,
   PakistanRoute: PakistanRoute,
