@@ -1,144 +1,123 @@
-# GFCEIP — Global Financial Crisis Early Warning & Economic Intelligence Platform
+# GFCEIP — Global Financial Crisis Early-Warning & Economic Intelligence Platform
 
-A real-time, open-access macro stability platform monitoring **33 economies**, **6 crisis types**, across **3 forecast horizons**, with a composite **GFSS (Global Financial Stability Score)** for every market.
-
-> **Stack note**: The original spec called for Next.js + FastAPI + Celery + XGBoost. That stack is not buildable in this environment. GFCEIP runs on **TanStack Start + Lovable Cloud (Supabase)** with TypeScript-based risk models and the **Lovable AI Gateway** for LLM features. Everything below is what actually ships and runs.
+> Course-grade deliverable. Real public-API data → reproducible ML pipeline → deployable Python service → live web app with realtime updates and AI copilot.
 
 ---
 
-## ✨ What's inside
+## 📦 What's in this repo
 
-| Page | Route | What it does |
-|---|---|---|
-| Landing | `/` | Hero, live ticker, vulnerability board, regional bands |
-| Global Dashboard | `/dashboard` | Stability distribution chart, full market table, live alerts (realtime) |
-| Country Intelligence | `/country/$slug` | Per-country macro KPIs, 24-month trend chart, full crisis probability matrix |
-| Pakistan Center | `/pakistan` | Dedicated 🇵🇰 deep-dive: SBP reserves, PKR index, CPI, debt, crisis matrix |
-| Compare | `/compare?a=…&b=…` | Side-by-side two-country comparison + head-to-head CPI chart |
-| Policy Simulator | `/simulator?iso=…` | 8 macro sliders → live recomputation of 6 crisis probabilities (logistic model) |
-| Crisis Explorer | `/crisis-explorer` | Historical crisis library with warning-signal tags |
-| AI Copilot | `/copilot` | Chat grounded in live GFCEIP data via Lovable AI Gateway (Gemini 2.5 Flash) |
+```
+.
+├── notebooks/
+│   ├── build_notebook.py        ← run once to regenerate the .ipynb
+│   └── gfceip_ml.ipynb          ← ⭐ MAIN ML DELIVERABLE — open in Jupyter / VSCode
+├── python-service/              ← FastAPI + XGBoost inference service
+│   ├── app/main.py
+│   ├── app/artifacts/           ← model.pkl + metrics.json + plots (created by notebook)
+│   ├── tests/test_api.py
+│   ├── Dockerfile · Procfile · requirements.txt
+│   └── README.md
+├── docs/                        ← 📖 ALL EXPLANATION FOR THE TEACHER
+│   ├── ARCHITECTURE.md          ← system diagram + stack rationale
+│   ├── ML_REPORT.md             ← data, cleaning, labeling, model, validation
+│   ├── API_REFERENCE.md         ← every endpoint, request/response shape
+│   ├── DEMO_SCRIPT.md           ← 10-minute live demo script (read out loud)
+│   └── TEACHER_QA.md            ← 14 anticipated Q&A — practice these
+├── src/                         ← TanStack Start frontend (already running in Lovable)
+└── supabase/migrations/         ← Postgres schema + RLS
+```
 
 ---
 
-## 🏗️ Architecture
+## 🚀 Quick start (VSCode workflow)
 
+### 1) Frontend (already deployed in Lovable)
+Open the **Preview URL** at the top of this chat. All pages work out of the box.
+
+### 2) Train the model
+```bash
+cd notebooks
+python build_notebook.py            # regenerates gfceip_ml.ipynb
+pip install jupyter pandas scikit-learn xgboost shap requests matplotlib seaborn
+jupyter notebook gfceip_ml.ipynb    # → Cell → Run All
 ```
-Browser (React 19 + TanStack Router + TanStack Query + Recharts)
-   │
-   ├─ Realtime subscriptions ─────► Supabase Realtime (alerts channel)
-   ├─ Direct reads (public RLS) ───► Supabase Postgres
-   └─ createServerFn RPC ──────────► TanStack server runtime (Cloudflare Worker)
-                                       │
-                                       ├─ supabaseAdmin (service-role)
-                                       └─ Lovable AI Gateway (LLM completions)
+Artifacts (`model.pkl`, `metrics.json`, `roc_curve.png`, `shap_summary.png`, `confusion_matrix.png`) appear under `python-service/app/artifacts/`.
+
+### 3) Run the Python API
+```bash
+cd python-service
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
+```
+Open <http://localhost:8000/docs> for live Swagger UI. Try `POST /predict`.
+
+### 4) Run the tests
+```bash
+cd python-service && pytest tests/ -v
 ```
 
-### Database (Supabase Postgres, RLS on, public read)
+### 5) (Optional) Deploy the API
+```bash
+docker build -t gfceip-ml python-service
+docker run -p 8000:8000 gfceip-ml
+```
+Or push to **Render / Railway / Fly.io** — Dockerfile + Procfile included.
 
-| Table | Purpose |
+---
+
+## 🧠 The Machine Learning, in one page
+
+| Question | Answer |
 |---|---|
-| `countries` | 33 monitored economies (ISO, slug, region, GDP, population, flag) |
-| `economic_indicators` | 8 indicators × 33 countries × 24 months ≈ 6,300 rows |
-| `gfss_scores` | Composite stability score + category + 30D trend per country |
-| `risk_scores` | Crisis probability per (country × crisis_type × horizon) |
-| `forecasts` | Indicator forecasts with confidence intervals |
-| `crisis_events` | Historical crisis catalogue |
-| `news_articles` | News feed with LLM-scored sentiment |
-| `sentiment_index` | Aggregated country sentiment |
-| `model_versions` | Model registry with ROC/AUC metadata |
-| `alerts` | Realtime alert stream (Supabase Realtime enabled) |
+| Data source | World Bank Open Data REST API (`api.worldbank.org/v2/`) |
+| Coverage | 33 countries × 8 indicators × 20 years (2004–2023) |
+| Cleaning | 6-step pipeline (ffill → interp → regional median → outlier clip) |
+| Label rule | Frankel-Rose / Kaminsky-Reinhart 5-trigger crisis definition |
+| Features | 8 raw + rolling mean/std + YoY deltas + region one-hots ≈ 40 features |
+| Model | XGBoost (`max_depth=4`, `lr=0.05`, `n_estimators=300`) |
+| Baseline compared | Logistic Regression (`class_weight="balanced"`) |
+| Validation | Stratified 5-Fold CV + held-out 20 % test set |
+| Metrics | Accuracy, Precision, Recall, F1, **ROC-AUC** |
+| Explainability | SHAP TreeExplainer (with permutation-importance fallback) |
+| Leakage prevention | All rolling features `.shift(1)`, stratified split, seeded |
 
-All tables have `GRANT SELECT … TO anon, authenticated` and a permissive `SELECT … USING (true)` RLS policy. Writes are blocked at the policy layer and only happen via the service-role `supabaseAdmin` client inside server functions.
-
-### Risk model
-
-`src/routes/simulator.tsx` ships a deterministic **logistic regression** for each of the 6 crisis types. Coefficients are illustrative defaults; replace with calibrated values from your training pipeline. The composite **GFSS** is precomputed during seeding from inflation, reserves, debt, current account, growth, and unemployment z-scores.
-
-### AI Copilot
-
-`src/lib/copilot.functions.ts` is a `createServerFn` that:
-1. Loads the 20 most-vulnerable countries and 10 most-recent alerts from Supabase via `supabaseAdmin`.
-2. Stuffs that JSON into the system prompt as **grounding context**.
-3. Forwards `{system, history, user}` to `https://ai.gateway.lovable.dev/v1/chat/completions` with `google/gemini-2.5-flash`.
-4. Returns the completion to the React client, which renders it in a chat UI (`/copilot`).
-
-No keys are exposed to the browser — `LOVABLE_API_KEY` is read inside the server handler.
+**Full report:** [`docs/ML_REPORT.md`](docs/ML_REPORT.md).
 
 ---
 
-## 🎨 Design system
+## 🌐 Live web app pages
 
-"Bloomberg Terminal × Vercel" — dense, dark-first, neon accents. Defined in `src/styles.css`:
-
-- **Tokens**: `oklch()` color space, semantic risk palette (`--risk-critical`, `--risk-high`, `--risk-moderate`, `--risk-low`, `--risk-strong`), neon accents (`--cyan`, `--magenta`, `--amber`, `--lime`), three layered surfaces.
-- **Fonts**: Inter (UI) + JetBrains Mono (tabular data / tickers).
-- **Utilities**: `.glass`, `.glass-strong`, `.text-glow-cyan`, `.ring-glow-cyan`, `.bg-grid`, `.bg-dots`, `.ticker-track`, `.live-dot`, `.num`, `.fade-in`.
-- **Layouts**: 1600px max container, sticky glass nav, semantic risk colors on every number.
-
-All components consume tokens — no hardcoded hex values.
-
----
-
-## 🚀 Running it
-
-The app is **already running in your Lovable preview**. To use it:
-
-1. Open **`/`** for the landing page.
-2. Click **Dashboard** to see the live market table + alerts feed.
-3. Visit **`/pakistan`** for the country deep-dive.
-4. Try **`/simulator`** — drag a slider on inflation or reserves and watch all 6 crisis probabilities re-price.
-5. Open **`/copilot`** and ask: *"Which countries have the lowest stability scores?"*
-
-### Required secret
-- `LOVABLE_API_KEY` — already provisioned in this Cloud project. Copilot won't work without it.
+| Route | Purpose |
+|---|---|
+| `/` | Landing, live ticker, vulnerability board |
+| `/dashboard` | 33-country stability board + **realtime** alerts (WebSocket) |
+| `/pakistan` | Country deep-dive — KPIs, 24-month trends, crisis matrix |
+| `/country/$slug` | Generic country page |
+| `/compare?a=…&b=…` | Side-by-side comparison |
+| `/simulator` | 8 sliders → live crisis probabilities (calls Python API or TS fallback) |
+| `/crisis-explorer` | Historical crisis catalogue |
+| `/copilot` | AI chat grounded in live DB (Gemini 2.5 Flash via Lovable AI Gateway) |
 
 ---
 
-## 🗂️ Project layout
+## 📚 Read these before presenting
 
-```
-src/
-  components/
-    AppShell.tsx              # Sticky nav + footer wrapper
-    ui/                       # shadcn primitives (pre-existing)
-  integrations/supabase/      # auto-generated clients (do not edit)
-  lib/
-    copilot.functions.ts      # createServerFn: AI Copilot
-    format.ts                 # number/color formatters
-  routes/
-    __root.tsx                # Root layout + error/404 boundaries
-    index.tsx                 # Landing
-    dashboard.tsx             # /dashboard
-    country.$slug.tsx         # /country/:slug
-    pakistan.tsx              # /pakistan
-    compare.tsx               # /compare?a=&b=
-    simulator.tsx             # /simulator?iso=
-    crisis-explorer.tsx       # /crisis-explorer
-    copilot.tsx               # /copilot
-  styles.css                  # Design tokens + utilities
-supabase/migrations/          # Schema migrations (RLS + grants included)
-```
+1. **[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)** — the system diagram you'll show first.
+2. **[`docs/ML_REPORT.md`](docs/ML_REPORT.md)** — every methodological choice, justified.
+3. **[`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md)** — 10-minute step-by-step demo with what-to-say lines.
+4. **[`docs/TEACHER_QA.md`](docs/TEACHER_QA.md)** — 14 likely questions, with answers. Rehearse these.
+5. **[`docs/API_REFERENCE.md`](docs/API_REFERENCE.md)** — every endpoint, every payload shape.
 
 ---
 
-## 🛣️ What's deliberately scoped out (vs. original spec)
+## 🔐 Security & reproducibility
 
-The original spec described a 9-engineer team building a multi-service production SaaS. To ship something **real and running today**, the following were simplified or deferred:
-
-| Spec item | Status | Notes |
-|---|---|---|
-| Python/FastAPI + Celery + Redis | ❌ Not used | TanStack server functions replace them |
-| XGBoost / SHAP / Prophet / FinBERT | ❌ Replaced | TypeScript logistic models + LLM sentiment |
-| Clerk auth + roles | ⏳ Deferred | Lovable Cloud auth is available; not yet wired |
-| Real ingestion cron (World Bank/FRED/IMF) | ⏳ Deferred | Schema + seed data in place; cron route scaffolding ready |
-| PDF report generation | ⏳ Deferred | Server route + `@react-pdf/renderer` is the path |
-| Leaflet world heatmap | ⏳ Deferred | Recharts powers all charts today |
-| Mobile QA pass | ✅ Responsive base | Designed at 375 / 768 / 1440 breakpoints |
-| WCAG 2.1 AA | ⚠️ Best-effort | Semantic HTML, contrast verified in dark mode |
-
-Anything in the "deferred" column is a follow-on chat away — say the word.
+- All Supabase tables have **Row-Level Security**; writes only via service-role inside server functions.
+- LLM key (`LOVABLE_API_KEY`) read server-side only — never shipped to the browser.
+- Notebook seed is fixed (`np.random.seed(42)`) — your run reproduces exactly.
+- Pydantic validation on every FastAPI payload.
 
 ---
 
-**GFCEIP** © 2026 · Built for transparency in global macro risk.
+**GFCEIP © 2026** — built for transparency in global macro risk.
