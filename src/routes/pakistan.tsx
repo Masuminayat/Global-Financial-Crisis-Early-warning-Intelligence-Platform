@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/AppShell";
 import { categoryColor, fmtNum, riskLevelColor } from "@/lib/format";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
+import { ClientChart } from "@/components/ClientChart";
 import { AlertTriangle, TrendingDown } from "lucide-react";
 
 export const Route = createFileRoute("/pakistan")({
@@ -140,21 +141,23 @@ function ChartCard({ title, data, dataKey, color }: { title: string; data: Array
     <div className="glass rounded-lg p-5">
       <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">{title}</h3>
       <div className="h-48">
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data}>
-            <defs>
-              <linearGradient id={`g-${dataKey}`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={color} stopOpacity={0.6} />
-                <stop offset="100%" stopColor={color} stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid stroke="var(--grid-line)" strokeDasharray="3 3" />
-            <XAxis dataKey="date" stroke="var(--muted-foreground)" fontSize={10} />
-            <YAxis stroke="var(--muted-foreground)" fontSize={10} />
-            <Tooltip contentStyle={{ background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }} />
-            <Area type="monotone" dataKey={dataKey} stroke={color} fill={`url(#g-${dataKey})`} strokeWidth={2} />
-          </AreaChart>
-        </ResponsiveContainer>
+        <ClientChart>
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={data}>
+              <defs>
+                <linearGradient id={`g-${dataKey}`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={color} stopOpacity={0.6} />
+                  <stop offset="100%" stopColor={color} stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid stroke="var(--grid-line)" strokeDasharray="3 3" />
+              <XAxis dataKey="date" stroke="var(--muted-foreground)" fontSize={10} />
+              <YAxis stroke="var(--muted-foreground)" fontSize={10} />
+              <Tooltip contentStyle={{ background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }} />
+              <Area type="monotone" dataKey={dataKey} stroke={color} fill={`url(#g-${dataKey})`} strokeWidth={2} />
+            </AreaChart>
+          </ResponsiveContainer>
+        </ClientChart>
       </div>
     </div>
   );

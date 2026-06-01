@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/AppShell";
 import { categoryColor, fmtNum, severityDot } from "@/lib/format";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
+import { ClientChart } from "@/components/ClientChart";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -97,15 +98,17 @@ function DashboardPage() {
           <div className="glass rounded-lg p-5 lg:col-span-2">
             <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Stability Distribution</h3>
             <div className="h-56">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={distribution}>
-                  <CartesianGrid stroke="var(--grid-line)" strokeDasharray="3 3" />
-                  <XAxis dataKey="category" stroke="var(--muted-foreground)" fontSize={12} />
-                  <YAxis stroke="var(--muted-foreground)" fontSize={12} />
-                  <Tooltip contentStyle={{ background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: 8 }} />
-                  <Bar dataKey="count" fill="var(--primary)" radius={[6, 6, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+              <ClientChart>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={distribution}>
+                    <CartesianGrid stroke="var(--grid-line)" strokeDasharray="3 3" />
+                    <XAxis dataKey="category" stroke="var(--muted-foreground)" fontSize={12} />
+                    <YAxis stroke="var(--muted-foreground)" fontSize={12} />
+                    <Tooltip contentStyle={{ background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: 8 }} />
+                    <Bar dataKey="count" fill="var(--primary)" radius={[6, 6, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </ClientChart>
             </div>
           </div>
 

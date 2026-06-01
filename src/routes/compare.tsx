@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/AppShell";
 import { categoryColor, fmtNum } from "@/lib/format";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from "recharts";
+import { ClientChart } from "@/components/ClientChart";
 
 const searchSchema = z.object({
   a: z.string().optional(),
@@ -150,17 +151,19 @@ function ComparisonChart({ slugA, slugB }: { slugA: string; slugB: string }) {
     <div className="glass mt-8 rounded-lg p-5">
       <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">CPI Inflation — Head to Head</h3>
       <div className="h-72">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data}>
-            <CartesianGrid stroke="var(--grid-line)" strokeDasharray="3 3" />
-            <XAxis dataKey="date" stroke="var(--muted-foreground)" fontSize={11} />
-            <YAxis stroke="var(--muted-foreground)" fontSize={11} />
-            <Tooltip contentStyle={{ background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: 8 }} />
-            <Legend wrapperStyle={{ fontSize: 12 }} />
-            <Line type="monotone" dataKey="A" stroke="var(--cyan)" strokeWidth={2} dot={false} name={slugA} />
-            <Line type="monotone" dataKey="B" stroke="var(--magenta)" strokeWidth={2} dot={false} name={slugB} />
-          </LineChart>
-        </ResponsiveContainer>
+        <ClientChart>
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={data}>
+              <CartesianGrid stroke="var(--grid-line)" strokeDasharray="3 3" />
+              <XAxis dataKey="date" stroke="var(--muted-foreground)" fontSize={11} />
+              <YAxis stroke="var(--muted-foreground)" fontSize={11} />
+              <Tooltip contentStyle={{ background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: 8 }} />
+              <Legend wrapperStyle={{ fontSize: 12 }} />
+              <Line type="monotone" dataKey="A" stroke="var(--cyan)" strokeWidth={2} dot={false} name={slugA} />
+              <Line type="monotone" dataKey="B" stroke="var(--magenta)" strokeWidth={2} dot={false} name={slugB} />
+            </LineChart>
+          </ResponsiveContainer>
+        </ClientChart>
       </div>
     </div>
   );
