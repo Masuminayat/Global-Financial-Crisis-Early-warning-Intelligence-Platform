@@ -162,18 +162,20 @@ function CountryPage() {
         <div className="glass mt-8 rounded-lg p-5">
           <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Macro Trend — 24 Months</h3>
           <div className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={series}>
-                <CartesianGrid stroke="var(--grid-line)" strokeDasharray="3 3" />
-                <XAxis dataKey="date" stroke="var(--muted-foreground)" fontSize={11} />
-                <YAxis stroke="var(--muted-foreground)" fontSize={11} />
-                <Tooltip contentStyle={{ background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: 8 }} />
-                <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Line type="monotone" dataKey="cpi_inflation" stroke="var(--risk-high)" strokeWidth={2} dot={false} name="CPI %" />
-                <Line type="monotone" dataKey="policy_rate" stroke="var(--cyan)" strokeWidth={2} dot={false} name="Policy Rate %" />
-                <Line type="monotone" dataKey="gdp_growth" stroke="var(--risk-strong)" strokeWidth={2} dot={false} name="GDP YoY %" />
-              </LineChart>
-            </ResponsiveContainer>
+            <ClientChart>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={series}>
+                  <CartesianGrid stroke="var(--grid-line)" strokeDasharray="3 3" />
+                  <XAxis dataKey="date" stroke="var(--muted-foreground)" fontSize={11} />
+                  <YAxis stroke="var(--muted-foreground)" fontSize={11} />
+                  <Tooltip contentStyle={{ background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: 8 }} />
+                  <Legend wrapperStyle={{ fontSize: 12 }} />
+                  <Line type="monotone" dataKey="cpi_inflation" stroke="var(--risk-high)" strokeWidth={2} dot={false} name="CPI %" />
+                  <Line type="monotone" dataKey="policy_rate" stroke="var(--cyan)" strokeWidth={2} dot={false} name="Policy Rate %" />
+                  <Line type="monotone" dataKey="gdp_growth" stroke="var(--risk-strong)" strokeWidth={2} dot={false} name="GDP YoY %" />
+                </LineChart>
+              </ResponsiveContainer>
+            </ClientChart>
           </div>
         </div>
 
