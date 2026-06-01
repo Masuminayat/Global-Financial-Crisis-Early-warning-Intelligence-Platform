@@ -77,15 +77,14 @@ function Landing() {
             </span>
           </div>
           <nav className="hidden md:flex items-center gap-1 text-sm">
-            {[
-              ["Dashboard", "/"],
-              ["Countries", "/"],
-              ["Pakistan", "/"],
-              ["Compare", "/"],
-              ["Simulator", "/"],
-              ["Crises", "/"],
-              ["Copilot", "/"],
-            ].map(([label, to]) => (
+            {([
+              ["Dashboard", "/dashboard"],
+              ["Pakistan", "/pakistan"],
+              ["Compare", "/compare"],
+              ["Simulator", "/simulator"],
+              ["Crises", "/crisis-explorer"],
+              ["Copilot", "/copilot"],
+            ] as const).map(([label, to]) => (
               <Link key={label} to={to} className="rounded-md px-3 py-1.5 text-muted-foreground hover:bg-accent hover:text-foreground">
                 {label}
               </Link>
