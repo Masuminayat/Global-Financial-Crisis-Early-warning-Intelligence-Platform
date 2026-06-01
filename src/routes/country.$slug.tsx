@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/AppShell";
 import { categoryColor, fmtNum, riskLevelColor } from "@/lib/format";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from "recharts";
+import { ClientChart } from "@/components/ClientChart";
 
 export const Route = createFileRoute("/country/$slug")({
   head: ({ params }) => ({
