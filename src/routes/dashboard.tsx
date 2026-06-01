@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/AppShell";
 import { categoryColor, fmtNum, severityDot } from "@/lib/format";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
+import { ClientChart } from "@/components/ClientChart";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
