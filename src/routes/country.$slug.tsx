@@ -1,4 +1,4 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/AppShell";
@@ -26,10 +26,8 @@ function CountryPage() {
   const { data: country } = useQuery({
     queryKey: ["country", slug],
     queryFn: async () => {
-      const { data, error } = await supabase.from("countries").select("*").eq("slug", slug).maybeSingle();
-      if (error) throw error;
-      if (!data) throw notFound();
-      return data as Country;
+      const { data } = await supabase.from("countries").select("*").eq("slug", slug).maybeSingle();
+      return (data as Country | null) ?? null;
     },
   });
 
