@@ -164,9 +164,10 @@ df["region"] = df["iso3"].map(REGION)
 IND_COLS = list(INDICATORS.values())
 
 # 1+2 ffill within country (max 2 yrs)
+for c in IND_COLS: df[c] = pd.to_numeric(df[c], errors="coerce")
 df[IND_COLS] = df.groupby("iso3")[IND_COLS].ffill(limit=2)
-# 3 linear interp
-df[IND_COLS] = df.groupby("iso3")[IND_COLS].apply(lambda g: g.interpolate("linear", limit_direction="both"))
+# 3 linear interp (transform to avoid object-dtype issues across pandas versions)
+df[IND_COLS] = df.groupby("iso3")[IND_COLS].transform(lambda g: g.interpolate("linear", limit_direction="both"))
 # 4 regional median fallback
 for c in IND_COLS:
     df[c] = df[c].fillna(df.groupby("region")[c].transform("median"))
@@ -249,16 +250,17 @@ print("n samples :", len(feat))
 """)
 
 md("""
-## 5. Model choice — why XGBoost
+## 5. Model choice — why XGBoost (with 3 alternatives compared)
 
-| Candidate | Why we considered | Why we picked / rejected |
+| Candidate | Why we considered | Verdict |
 |---|---|---|
-| Logistic Regression | Interpretable, IMF baseline | **Baseline only** — too linear for indicator interactions |
-| Random Forest | Handles missing data, non-linear | Good, but XGBoost generally beats it on tabular |
-| **XGBoost** ✅ | SOTA on tabular, handles missing natively, fast, SHAP-explainable | **Primary model** |
-| Neural net (MLP) | Could capture deeper patterns | Overkill for ~600 samples — would overfit |
+| Logistic Regression | Interpretable IMF/EWS baseline | **Baseline** — linear, expected to underfit interactions |
+| Random Forest | Bagging trees, robust to noise | Strong, but higher variance than boosting |
+| **XGBoost** ✅ | SOTA on tabular, native missing-value handling, SHAP-friendly | **Primary model** |
+| LightGBM | Faster boosting alternative; leaf-wise growth | **Sanity check** — should statistically tie XGBoost |
+| Neural net (MLP) | Could capture deeper patterns | Rejected — overkill for ~660 samples; would overfit |
 
-We compare **Logistic Regression vs XGBoost** below so the choice is defensible.
+We compare all 4 (Logistic, RF, XGB, LGBM) below so the choice is defensible with numbers, not vibes.
 """)
 
 code("""
@@ -266,6 +268,7 @@ from sklearn.model_selection import StratifiedKFold, train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import (accuracy_score, precision_score, recall_score, f1_score,
                              roc_auc_score, roc_curve, confusion_matrix, classification_report)
 
@@ -277,16 +280,31 @@ except ImportError:
     HAS_XGB = False
     print("xgboost not installed — falling back to sklearn GradientBoostingClassifier")
 
-X = feat[FEATURE_COLS].values
+try:
+    from lightgbm import LGBMClassifier
+    HAS_LGBM = True
+except ImportError:
+    HAS_LGBM = False
+    print("lightgbm not installed — LightGBM row will be skipped")
+
+X = feat[FEATURE_COLS].values.astype(float)
 y = feat["crisis_label"].values
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, stratify=y, random_state=42)
 
-logit = Pipeline([("scale", StandardScaler()), ("clf", LogisticRegression(max_iter=1000, class_weight="balanced"))])
+logit = Pipeline([("scale", StandardScaler()),
+                  ("clf", LogisticRegression(max_iter=1000, class_weight="balanced", random_state=42))])
+rf = RandomForestClassifier(n_estimators=300, max_depth=8, class_weight="balanced",
+                            random_state=42, n_jobs=-1)
 xgb = XGBClassifier(
     n_estimators=300, max_depth=4, learning_rate=0.05,
     subsample=0.85, random_state=42,
     **({"eval_metric": "logloss", "scale_pos_weight": (y_train==0).sum()/max((y_train==1).sum(),1)} if HAS_XGB else {})
 )
+models = {"Logistic Regression": logit, "Random Forest": rf, "XGBoost": xgb}
+if HAS_LGBM:
+    models["LightGBM"] = LGBMClassifier(n_estimators=200, max_depth=6, learning_rate=0.05,
+                                        class_weight="balanced", random_state=42,
+                                        verbose=-1, n_jobs=1)
 """)
 
 md("### 6. Validation — Stratified 5-Fold (no leakage) + held-out test set")
@@ -305,15 +323,21 @@ def kfold_scores(model, X, y, k=5):
         out["auc"].append(roc_auc_score(y[va], pp))
     return {k: (float(np.mean(v)), float(np.std(v))) for k,v in out.items()}
 
-print("Logistic Regression (5-fold CV):")
-for k,(m,s) in kfold_scores(logit, X_train, y_train).items():
-    print(f"  {k:>5}: {m:.3f} ± {s:.3f}")
+cv_results = {}
+for name, m in models.items():
+    print(f"\\n=== {name} (5-fold CV) ===")
+    cv_results[name] = kfold_scores(m, X_train, y_train)
+    for k,(mn,sd) in cv_results[name].items():
+        print(f"  {k:>5}: {mn:.3f} ± {sd:.3f}")
 
-print("\\nXGBoost (5-fold CV):")
-xgb_cv = kfold_scores(xgb, X_train, y_train)
-for k,(m,s) in xgb_cv.items():
-    print(f"  {k:>5}: {m:.3f} ± {s:.3f}")
+# Comparison table
+print("\\n\\nModel comparison (mean CV scores):")
+cmp = pd.DataFrame({n: {k: v[0] for k,v in r.items()} for n,r in cv_results.items()}).T
+cmp = cmp[["auc","f1","prec","rec","acc"]].round(3)
+print(cmp.sort_values("auc", ascending=False).to_string())
+xgb_cv = cv_results["XGBoost"]
 """)
+
 
 md("### 7. Held-out test metrics + ROC curve")
 code("""
