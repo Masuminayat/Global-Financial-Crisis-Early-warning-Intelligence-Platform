@@ -164,9 +164,10 @@ df["region"] = df["iso3"].map(REGION)
 IND_COLS = list(INDICATORS.values())
 
 # 1+2 ffill within country (max 2 yrs)
+for c in IND_COLS: df[c] = pd.to_numeric(df[c], errors="coerce")
 df[IND_COLS] = df.groupby("iso3")[IND_COLS].ffill(limit=2)
-# 3 linear interp
-df[IND_COLS] = df.groupby("iso3")[IND_COLS].apply(lambda g: g.interpolate("linear", limit_direction="both"))
+# 3 linear interp (transform to avoid object-dtype issues across pandas versions)
+df[IND_COLS] = df.groupby("iso3")[IND_COLS].transform(lambda g: g.interpolate("linear", limit_direction="both"))
 # 4 regional median fallback
 for c in IND_COLS:
     df[c] = df[c].fillna(df.groupby("region")[c].transform("median"))
