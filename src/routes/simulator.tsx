@@ -5,6 +5,7 @@ import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/AppShell";
 import { fmtNum, riskLevelColor } from "@/lib/format";
+import { INDICATOR_ALIASES } from "@/lib/macro";
 
 const searchSchema = z.object({ iso: z.string().optional() });
 
@@ -19,12 +20,12 @@ function sigmoid(z: number) { return 1 / (1 + Math.exp(-z)); }
 
 // crisis_type → { intercept, weights }
 const MODELS: Record<string, { b0: number; w: Record<string, number> }> = {
-  currency_crisis:  { b0: -3.2, w: { fx_reserves_usd_bn: -0.04, cpi_inflation: 0.12, current_account_gdp: -0.25, policy_rate: -0.05 } },
-  sovereign_debt:   { b0: -4.0, w: { public_debt_gdp: 0.05, gdp_growth: -0.25, policy_rate: 0.10, current_account_gdp: -0.15 } },
-  banking_crisis:   { b0: -3.5, w: { cpi_inflation: 0.08, policy_rate: 0.10, gdp_growth: -0.30, unemployment: 0.15 } },
-  imf_bailout:      { b0: -3.0, w: { fx_reserves_usd_bn: -0.08, public_debt_gdp: 0.04, current_account_gdp: -0.30 } },
-  capital_flight:   { b0: -3.4, w: { exchange_rate_idx: 0.03, cpi_inflation: 0.10, policy_rate: -0.08 } },
-  bop_crisis:       { b0: -3.3, w: { current_account_gdp: -0.40, fx_reserves_usd_bn: -0.06, cpi_inflation: 0.08 } },
+  currency_crisis:  { b0: -3.2, w: { reserves_usd: -0.04, cpi_inflation: 0.12, current_account_pct_gdp: -0.25, real_interest_rate: -0.05 } },
+  sovereign_debt:   { b0: -4.0, w: { govt_debt_pct_gdp: 0.05, gdp_growth: -0.25, real_interest_rate: 0.10, current_account_pct_gdp: -0.15 } },
+  banking_crisis:   { b0: -3.5, w: { cpi_inflation: 0.08, real_interest_rate: 0.10, gdp_growth: -0.30, unemployment: 0.15 } },
+  imf_bailout:      { b0: -3.0, w: { reserves_usd: -0.08, govt_debt_pct_gdp: 0.04, current_account_pct_gdp: -0.30 } },
+  capital_flight:   { b0: -3.4, w: { exchange_rate_idx: 0.03, cpi_inflation: 0.10, real_interest_rate: -0.08 } },
+  bop_crisis:       { b0: -3.3, w: { current_account_pct_gdp: -0.40, reserves_usd: -0.06, cpi_inflation: 0.08 } },
 };
 
 function levelOf(p: number) {
@@ -53,6 +54,10 @@ function SimulatorPage() {
         .order("period_date", { ascending: false });
       const out: Record<string, number> = {};
       for (const row of data ?? []) if (out[row.indicator_code as string] == null) out[row.indicator_code as string] = Number(row.value);
+      if (out.fx_reserves_usd_bn != null && out.reserves_usd == null) out.reserves_usd = out.fx_reserves_usd_bn;
+      if (out.public_debt_gdp != null && out.govt_debt_pct_gdp == null) out.govt_debt_pct_gdp = out.public_debt_gdp;
+      if (out.current_account_gdp != null && out.current_account_pct_gdp == null) out.current_account_pct_gdp = out.current_account_gdp;
+      if (out.policy_rate != null && out.real_interest_rate == null) out.real_interest_rate = out.policy_rate;
       return out;
     },
   });
@@ -62,11 +67,11 @@ function SimulatorPage() {
 
   const SLIDERS: Array<{ code: string; label: string; min: number; max: number; step: number; unit: string }> = [
     { code: "cpi_inflation", label: "CPI Inflation", min: -2, max: 60, step: 0.1, unit: "%" },
-    { code: "policy_rate", label: "Policy Rate", min: 0, max: 30, step: 0.25, unit: "%" },
+    { code: INDICATOR_ALIASES.rates[0], label: "Interest Rate", min: 0, max: 30, step: 0.25, unit: "%" },
     { code: "gdp_growth", label: "GDP Growth (YoY)", min: -10, max: 12, step: 0.1, unit: "%" },
-    { code: "fx_reserves_usd_bn", label: "FX Reserves", min: 0, max: 4000, step: 1, unit: "USD bn" },
-    { code: "current_account_gdp", label: "Current Account / GDP", min: -15, max: 15, step: 0.1, unit: "%" },
-    { code: "public_debt_gdp", label: "Public Debt / GDP", min: 0, max: 250, step: 1, unit: "%" },
+    { code: INDICATOR_ALIASES.reserves[0], label: "FX Reserves", min: 0, max: 4000, step: 1, unit: "USD bn" },
+    { code: INDICATOR_ALIASES.currentAccount[0], label: "Current Account / GDP", min: -15, max: 15, step: 0.1, unit: "%" },
+    { code: INDICATOR_ALIASES.debt[0], label: "Public Debt / GDP", min: 0, max: 250, step: 1, unit: "%" },
     { code: "unemployment", label: "Unemployment", min: 0, max: 30, step: 0.1, unit: "%" },
     { code: "exchange_rate_idx", label: "Exchange Rate Index", min: 50, max: 400, step: 1, unit: "idx" },
   ];
@@ -88,7 +93,7 @@ function SimulatorPage() {
     <AppShell badge="SIM">
       <div className="mx-auto max-w-[1600px] px-6 py-8">
         <h1 className="text-3xl font-semibold tracking-tight">Policy Simulator</h1>
-        <p className="text-sm text-muted-foreground">Shock the inputs. See how crisis probabilities re-price in real time. Pure logistic model on macro features.</p>
+        <p className="text-sm text-muted-foreground">Shock the inputs. See how scenario probabilities re-price using the app&apos;s current indicator set.</p>
 
         <div className="mt-6 flex flex-wrap items-end gap-3">
           <label className="text-xs uppercase text-muted-foreground flex flex-col gap-1">
@@ -158,7 +163,7 @@ function SimulatorPage() {
         </div>
 
         <p className="mt-6 text-xs text-muted-foreground">
-          Model: logistic regression on standardised macro features. Coefficients are illustrative defaults — replace with calibrated estimates for production use.
+          Scenario engine only: this tool shows directional sensitivity using simplified coefficients, while the live country scores come from the refreshed backend model outputs.
         </p>
       </div>
     </AppShell>

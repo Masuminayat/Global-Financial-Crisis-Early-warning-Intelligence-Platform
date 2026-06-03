@@ -96,6 +96,39 @@ def risk_level(p: float) -> str:
     return "LOW"
 
 
+def clamp01(v: float) -> float:
+    return max(0.0, min(1.0, float(v)))
+
+
+def indicator_stress(row: pd.Series) -> tuple[float, list[dict]]:
+    inflation = clamp01((float(row.get("cpi_inflation", 0.0)) - 5.0) / 25.0)
+    debt = clamp01((float(row.get("govt_debt_pct_gdp", 0.0)) - 50.0) / 50.0)
+    current_account = clamp01(((-float(row.get("current_account_pct_gdp", 0.0))) - 2.0) / 8.0)
+    growth = clamp01((2.0 - float(row.get("gdp_growth", 0.0))) / 7.0)
+    unemployment = clamp01((float(row.get("unemployment", 0.0)) - 6.0) / 12.0)
+    reserves_yoy = clamp01(((-float(row.get("reserves_yoy", 0.0))) - 5.0) / 35.0)
+
+    weighted = [
+        ("cpi_inflation", inflation, 0.25, float(row.get("cpi_inflation", 0.0))),
+        ("govt_debt_pct_gdp", debt, 0.20, float(row.get("govt_debt_pct_gdp", 0.0))),
+        ("current_account_pct_gdp", current_account, 0.15, float(row.get("current_account_pct_gdp", 0.0))),
+        ("gdp_growth", growth, 0.20, float(row.get("gdp_growth", 0.0))),
+        ("unemployment", unemployment, 0.10, float(row.get("unemployment", 0.0))),
+        ("reserves_yoy", reserves_yoy, 0.10, float(row.get("reserves_yoy", 0.0))),
+    ]
+    score = sum(level * weight for _, level, weight, _ in weighted)
+    drivers = [
+        {
+            "feature": feature,
+            "contribution": round(level * weight, 4),
+            "value": round(value, 4),
+        }
+        for feature, level, weight, value in sorted(weighted, key=lambda item: item[1] * item[2], reverse=True)
+        if (level * weight) > 0
+    ]
+    return score, drivers
+
+
 def write_eda(feat: pd.DataFrame, raw: pd.DataFrame) -> dict:
     eda = {
         "generated_at": datetime.utcnow().isoformat() + "Z",
@@ -182,9 +215,6 @@ def upsert_db(feat: pd.DataFrame, feature_cols: list[str], model, model_version:
     res = sb_request("GET", "countries?select=iso_code")
     existing_iso = {r["iso_code"] for r in json.loads(res)}
 
-    feat_arr = importances
-    feat_names = feature_cols
-
     gfss_rows, risk_rows, alert_rows = [], [], []
 
     for _, r in latest.iterrows():
@@ -192,27 +222,33 @@ def upsert_db(feat: pd.DataFrame, feature_cols: list[str], model, model_version:
         iso = ISO3_TO_ISO2.get(iso3, iso3)
         if iso not in existing_iso:
             continue
-        score = int(r["score"])
-        p = float(r["crisis_prob"])
-        trend = score - int(prev_map.get(iso, score))
+        model_prob = float(r["crisis_prob"])
+        stress_score, stress_drivers = indicator_stress(r)
+        composite_prob = clamp01((0.25 * model_prob) + (0.75 * stress_score))
+        score = int(np.clip(np.round((1 - composite_prob) * 100), 1, 99))
+
+        prev_score = int(prev_map.get(iso, score))
+        if iso3 in prev_map:
+            prev_row = prev[prev["iso3"] == iso3]
+            if not prev_row.empty:
+                prev_model_prob = float(model.predict_proba(prev_row[feature_cols].astype(float).to_numpy())[0, 1])
+                prev_stress, _ = indicator_stress(prev_row.iloc[0])
+                prev_score = int(np.clip(np.round((1 - clamp01((0.25 * prev_model_prob) + (0.75 * prev_stress))) * 100), 1, 99))
+
+        trend = score - prev_score
         gfss_rows.append({
             "country_iso": iso, "score": score,
             "category": gfss_category(score), "trend_30d": trend,
         })
 
-        contribs = r[feat_names].astype(float).to_numpy() * feat_arr
-        top_idx = np.argsort(-np.abs(contribs))[:5]
-        drivers = [{"feature": feat_names[i],
-                    "contribution": round(float(contribs[i]), 4),
-                    "value": round(float(r[feat_names[i]]), 4)} for i in top_idx]
-        ci = max(0.05, min(0.15, p * 0.2))
+        ci = max(0.05, min(0.15, composite_prob * 0.2))
         risk_rows.append({
             "country_iso": iso, "crisis_type": "currency_crisis",
-            "horizon_months": 12, "probability": round(p, 6),
-            "risk_level": risk_level(p),
-            "ci_lower": round(max(0.0, p - ci), 6),
-            "ci_upper": round(min(1.0, p + ci), 6),
-            "top_drivers": drivers, "model_version": model_version,
+            "horizon_months": 12, "probability": round(composite_prob, 6),
+            "risk_level": risk_level(composite_prob),
+            "ci_lower": round(max(0.0, composite_prob - ci), 6),
+            "ci_upper": round(min(1.0, composite_prob + ci), 6),
+            "top_drivers": stress_drivers[:5], "model_version": f"{model_version}-macro-composite",
         })
 
     raw_alerts = detect_alerts(latest)
