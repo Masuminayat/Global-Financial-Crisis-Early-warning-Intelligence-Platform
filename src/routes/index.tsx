@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Activity, AlertTriangle, ArrowUpRight, Globe2, TrendingDown, TrendingUp, Zap } from "lucide-react";
+import { formatCrisisType, parseTopDrivers, sortRiskRows } from "@/lib/macro";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -17,6 +18,7 @@ export const Route = createFileRoute("/")({
 
 type GfssRow = { country_iso: string; score: number; category: string; trend_30d: number; countries: { name: string; slug: string; flag_emoji: string | null; region: string } };
 type AlertRow = { id: string; country_iso: string; severity: string; title: string; triggered_at: string; countries: { name: string; flag_emoji: string | null } };
+type RiskRow = { country_iso: string; probability: number; risk_level: string; crisis_type: string; horizon_months: number; top_drivers: unknown; generated_at: string; model_version: string };
 
 function categoryColor(cat: string) {
   switch (cat) {
@@ -45,22 +47,40 @@ function Landing() {
     },
   });
 
-  const { data: alerts = [] } = useQuery({
+  const { data: alertsFeed } = useQuery({
     queryKey: ["alerts-recent"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error, count } = await supabase
         .from("alerts")
-        .select("id,country_iso,severity,title,triggered_at,countries(name,flag_emoji)")
+        .select("id,country_iso,severity,title,triggered_at,countries(name,flag_emoji)", { count: "exact" })
         .order("triggered_at", { ascending: false })
         .limit(12);
       if (error) throw error;
-      return (data as unknown as AlertRow[]) ?? [];
+      return { rows: (data as unknown as AlertRow[]) ?? [], total: count ?? 0 };
     },
   });
 
+  const { data: risks = [] } = useQuery({
+    queryKey: ["risk-home"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("risk_scores")
+        .select("country_iso,probability,risk_level,crisis_type,horizon_months,top_drivers,generated_at,model_version")
+        .order("probability", { ascending: false });
+      if (error) throw error;
+      return (data as unknown as RiskRow[]) ?? [];
+    },
+  });
+
+  const alerts = alertsFeed?.rows ?? [];
+  const alertTotal = alertsFeed?.total ?? 0;
   const globalAvg = gfss.length ? gfss.reduce((s, g) => s + Number(g.score), 0) / gfss.length : 0;
   const criticalCount = gfss.filter((g) => g.category === "critical" || g.category === "weak").length;
   const vulnerable = [...gfss].slice(0, 10);
+  const risksByCountry = risks.reduce<Record<string, RiskRow[]>>((acc, row) => {
+    (acc[row.country_iso] ??= []).push(row);
+    return acc;
+  }, {});
 
   return (
     <div className="min-h-screen">
@@ -140,7 +160,7 @@ function Landing() {
           <div className="mt-14 grid grid-cols-2 gap-4 md:grid-cols-4">
             {[
               { label: "Countries monitored", value: gfss.length, icon: Globe2 },
-              { label: "Active alerts", value: alerts.length, icon: AlertTriangle, accent: "text-risk-high" },
+               { label: "Active alerts", value: alertTotal, icon: AlertTriangle, accent: "text-risk-high" },
               { label: "Global stability avg", value: globalAvg.toFixed(1), icon: Activity, accent: "text-primary" },
               { label: "Critical/weak", value: criticalCount, icon: TrendingDown, accent: "text-risk-critical" },
             ].map((s) => (
@@ -181,7 +201,7 @@ function Landing() {
                   <th className="px-5 py-2 font-normal">Region</th>
                   <th className="px-5 py-2 font-normal text-right">GFSS</th>
                   <th className="px-5 py-2 font-normal text-right">30D</th>
-                  <th className="px-5 py-2 font-normal">Category</th>
+              <th className="px-5 py-2 font-normal">Primary Risk</th>
                 </tr>
               </thead>
               <tbody>
@@ -198,7 +218,12 @@ function Landing() {
                     <td className={`num px-5 py-3 text-right ${Number(g.trend_30d) >= 0 ? "text-risk-low" : "text-risk-critical"}`}>
                       {Number(g.trend_30d) >= 0 ? "+" : ""}{Number(g.trend_30d).toFixed(2)}
                     </td>
-                    <td className={`px-5 py-3 text-xs uppercase tracking-wider ${categoryColor(g.category)}`}>{g.category}</td>
+                    <td className="px-5 py-3 text-xs uppercase tracking-wider text-muted-foreground">
+                      {(() => {
+                        const lead = sortRiskRows(risksByCountry[g.country_iso] ?? [])[0];
+                        return lead ? formatCrisisType(lead.crisis_type) : g.category;
+                      })()}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -228,6 +253,7 @@ function Landing() {
                   </div>
                 </li>
               ))}
+              {alerts.length === 0 && <li className="px-5 py-6 text-sm text-muted-foreground">No active alerts.</li>}
             </ul>
           </div>
         </div>
@@ -263,12 +289,16 @@ function Landing() {
       </section>
 
       {/* FEATURES */}
-      <section className="border-t border-border bg-surface-1/50">
+       <section className="border-t border-border bg-surface-1/50">
         <div className="mx-auto max-w-[1600px] px-6 py-16 grid gap-6 md:grid-cols-3">
           {[
-            { t: "Six crisis models", d: "Currency, sovereign debt, banking, IMF bailout, capital flight, BoP — at 6, 12, and 24-month horizons." },
-            { t: "Explainable predictions", d: "Top driver attributions on every score so analysts know what's moving the dial." },
-            { t: "Pakistan deep-dive", d: "Dedicated intelligence center: IMF status, PKR/USD, SBP reserves, policy simulator." },
+            { t: "Current live coverage", d: `${new Set(risks.map((r) => r.country_iso)).size} economies currently scored from live model outputs in the backend.` },
+            { t: "Explainable predictions", d: (() => {
+              const top = sortRiskRows(risks)[0];
+              const driver = parseTopDrivers(top?.top_drivers)[0];
+              return top && driver ? `${formatCrisisType(top.crisis_type)} is currently led by ${driver.feature.replaceAll("_", " ")} as the strongest driver.` : "Driver attribution appears when model explanations are available.";
+            })() },
+            { t: "Pakistan deep-dive", d: "Dedicated intelligence center with live macro indicators, country risk score, and the scenario simulator." },
           ].map((f) => (
             <div key={f.t} className="glass rounded-lg p-6">
               <TrendingUp className="h-5 w-5 text-primary" />

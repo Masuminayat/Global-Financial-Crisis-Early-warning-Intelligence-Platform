@@ -6,6 +6,7 @@ import { categoryColor, fmtNum, riskLevelColor } from "@/lib/format";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { ClientChart } from "@/components/ClientChart";
 import { AlertTriangle, TrendingDown } from "lucide-react";
+import { INDICATOR_ALIASES, formatCrisisType, groupIndicators, latestValue, metricSeries, previousDelta, sortRiskRows } from "@/lib/macro";
 
 export const Route = createFileRoute("/pakistan")({
   head: () => ({
@@ -36,14 +37,11 @@ function PakistanPage() {
     queryFn: async () => (await supabase.from("risk_scores").select("*").eq("country_iso", iso).order("horizon_months")).data ?? [],
   });
 
-  const grouped: Record<string, { period_date: string; value: number }[]> = {};
-  for (const i of indicators) (grouped[i.indicator_code] ||= []).push({ period_date: i.period_date as string, value: Number(i.value) });
-
-  const reservesSeries = (grouped["fx_reserves_usd_bn"] ?? []).map((r) => ({ date: r.period_date.slice(0, 7), reserves: r.value }));
-  const fxSeries = (grouped["exchange_rate_idx"] ?? []).map((r) => ({ date: r.period_date.slice(0, 7), fx: r.value }));
-  const cpiSeries = (grouped["cpi_inflation"] ?? []).map((r) => ({ date: r.period_date.slice(0, 7), cpi: r.value }));
-
-  const latest = (code: string) => grouped[code]?.slice(-1)[0]?.value;
+  const grouped = groupIndicators(indicators as Array<{ indicator_code: string; period_date: string; value: number | string | null }>);
+  const reservesSeries = metricSeries(grouped, INDICATOR_ALIASES.reserves, "reserves");
+  const fxSeries = metricSeries(grouped, INDICATOR_ALIASES.fx, "fx");
+  const cpiSeries = metricSeries(grouped, INDICATOR_ALIASES.inflation, "cpi");
+  const primaryRisk = sortRiskRows(risks as Array<{ crisis_type: string; horizon_months: number; probability: number; risk_level: string }>)[0];
 
   return (
     <AppShell badge="🇵🇰 PK">
@@ -68,10 +66,10 @@ function PakistanPage() {
         {/* Top stat cards */}
         <div className="mt-6 grid gap-4 md:grid-cols-4">
           {[
-            { label: "FX Reserves", value: fmtNum(latest("fx_reserves_usd_bn"), 1), unit: "USD bn", icon: TrendingDown, accent: "text-risk-high" },
-            { label: "CPI Inflation", value: fmtNum(latest("cpi_inflation"), 1), unit: "%", icon: AlertTriangle, accent: "text-risk-critical" },
-            { label: "Policy Rate (SBP)", value: fmtNum(latest("policy_rate"), 2), unit: "%", icon: AlertTriangle, accent: "text-cyan" },
-            { label: "Public Debt", value: fmtNum(latest("public_debt_gdp"), 1), unit: "% of GDP", icon: TrendingDown, accent: "text-risk-high" },
+            { label: "FX Reserves", value: fmtNum(latestValue(grouped, INDICATOR_ALIASES.reserves), 1), unit: "USD bn", icon: TrendingDown, accent: "text-risk-high" },
+            { label: "CPI Inflation", value: fmtNum(latestValue(grouped, INDICATOR_ALIASES.inflation), 1), unit: "%", icon: AlertTriangle, accent: "text-risk-critical" },
+            { label: "Interest Rate", value: fmtNum(latestValue(grouped, INDICATOR_ALIASES.rates), 2), unit: "%", icon: AlertTriangle, accent: "text-cyan" },
+            { label: "Public Debt", value: fmtNum(latestValue(grouped, INDICATOR_ALIASES.debt), 1), unit: "% of GDP", icon: TrendingDown, accent: "text-risk-high" },
           ].map((s) => (
             <div key={s.label} className="glass rounded-lg p-5">
               <div className="flex items-center justify-between">
@@ -84,6 +82,21 @@ function PakistanPage() {
           ))}
         </div>
 
+        {primaryRisk && (
+          <div className="glass mt-6 rounded-lg px-5 py-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <div className="text-xs uppercase tracking-wider text-muted-foreground">Highest live model risk</div>
+                <div className="mt-1 text-lg font-medium capitalize">{formatCrisisType(primaryRisk.crisis_type)}</div>
+              </div>
+              <div className="text-right">
+                <div className={`num text-2xl ${riskLevelColor(primaryRisk.risk_level)}`}>{fmtNum(primaryRisk.probability * 100, 1)}%</div>
+                <div className={`text-xs uppercase ${riskLevelColor(primaryRisk.risk_level)}`}>{primaryRisk.risk_level} · {primaryRisk.horizon_months}M</div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Charts */}
         <div className="mt-8 grid gap-6 lg:grid-cols-3">
           <ChartCard title="SBP FX Reserves (USD bn)" data={reservesSeries} dataKey="reserves" color="var(--cyan)" />
@@ -94,31 +107,31 @@ function PakistanPage() {
         {/* Crisis probabilities */}
         <div className="glass mt-8 rounded-lg overflow-hidden">
           <div className="border-b border-border px-5 py-3">
-            <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Crisis Probability Matrix</h3>
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Live Risk Output</h3>
           </div>
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground">
                 <th className="px-5 py-2 font-normal">Crisis Type</th>
-                <th className="px-5 py-2 font-normal text-right">6M</th>
-                <th className="px-5 py-2 font-normal text-right">12M</th>
-                <th className="px-5 py-2 font-normal text-right">24M</th>
+                <th className="px-5 py-2 font-normal text-right">Probability</th>
+                <th className="px-5 py-2 font-normal text-right">Horizon</th>
+                <th className="px-5 py-2 font-normal text-right">Level</th>
               </tr>
             </thead>
             <tbody>
-              {["currency_crisis","sovereign_debt","banking_crisis","imf_bailout","capital_flight","bop_crisis"].map((ct) => {
-                const cells = [6, 12, 24].map((h) => risks.find((r) => r.crisis_type === ct && r.horizon_months === h));
-                return (
-                  <tr key={ct} className="border-t border-border/50">
-                    <td className="px-5 py-3 capitalize">{ct.replaceAll("_", " ")}</td>
-                    {cells.map((c, i) => (
-                      <td key={i} className={`num px-5 py-3 text-right ${c ? riskLevelColor((c as { risk_level: string }).risk_level) : "text-muted-foreground"}`}>
-                        {c ? `${(Number((c as { probability: number }).probability) * 100).toFixed(1)}%` : "—"}
-                      </td>
-                    ))}
-                  </tr>
-                );
-              })}
+              {sortRiskRows(risks as Array<{ crisis_type: string; horizon_months: number; probability: number; risk_level: string }>).map((risk) => (
+                <tr key={`${risk.crisis_type}-${risk.horizon_months}`} className="border-t border-border/50">
+                  <td className="px-5 py-3 capitalize">{formatCrisisType(risk.crisis_type)}</td>
+                  <td className={`num px-5 py-3 text-right ${riskLevelColor(risk.risk_level)}`}>{fmtNum(risk.probability * 100, 1)}%</td>
+                  <td className="num px-5 py-3 text-right text-muted-foreground">{risk.horizon_months}M</td>
+                  <td className={`px-5 py-3 text-right text-xs uppercase ${riskLevelColor(risk.risk_level)}`}>{risk.risk_level}</td>
+                </tr>
+              ))}
+              {risks.length === 0 && (
+                <tr className="border-t border-border/50">
+                  <td colSpan={4} className="px-5 py-6 text-center text-sm text-muted-foreground">No live risk rows available yet.</td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

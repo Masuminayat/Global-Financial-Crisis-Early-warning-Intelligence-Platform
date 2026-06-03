@@ -7,6 +7,7 @@ import { AppShell } from "@/components/AppShell";
 import { categoryColor, fmtNum } from "@/lib/format";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from "recharts";
 import { ClientChart } from "@/components/ClientChart";
+import { formatCrisisType } from "@/lib/macro";
 
 const searchSchema = z.object({
   a: z.string().optional(),
@@ -107,12 +108,12 @@ function CountryPanel({ slug }: { slug: string }) {
       </div>
 
       <div className="mt-5">
-        <div className="mb-2 text-xs uppercase tracking-wider text-muted-foreground">12-Month Crisis Probabilities</div>
+        <div className="mb-2 text-xs uppercase tracking-wider text-muted-foreground">Live Risk Outputs</div>
         <div className="grid grid-cols-2 gap-2 text-xs">
           {risks.map((r) => (
             <div key={r.crisis_type as string} className="flex justify-between rounded-md bg-surface-2 px-3 py-2">
-              <span className="capitalize">{(r.crisis_type as string).replaceAll("_", " ")}</span>
-              <span className="num">{(Number(r.probability) * 100).toFixed(1)}%</span>
+              <span className="capitalize">{formatCrisisType(r.crisis_type as string)}</span>
+              <span className="num">{(Number(r.probability) * 100).toFixed(1)}% · {r.horizon_months}M</span>
             </div>
           ))}
         </div>

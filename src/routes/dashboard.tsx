@@ -6,6 +6,7 @@ import { AppShell } from "@/components/AppShell";
 import { categoryColor, fmtNum, severityDot } from "@/lib/format";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { ClientChart } from "@/components/ClientChart";
+import { formatCrisisType, sortRiskRows } from "@/lib/macro";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -25,6 +26,7 @@ type GfssRow = {
   countries: { name: string; slug: string; flag_emoji: string | null; region: string; sub_region: string | null };
 };
 type AlertRow = { id: string; country_iso: string; severity: string; title: string; message: string; triggered_at: string; countries: { name: string; flag_emoji: string | null } };
+type RiskRow = { country_iso: string; probability: number; risk_level: string; crisis_type: string; horizon_months: number; generated_at: string; model_version: string };
 
 const CATEGORIES = ["all", "critical", "weak", "vulnerable", "stable", "strong"] as const;
 type Category = (typeof CATEGORIES)[number];
@@ -52,16 +54,28 @@ function DashboardPage() {
     },
   });
 
-  const { data: alerts = [], refetch } = useQuery({
+  const { data: alertsFeed, refetch } = useQuery({
     queryKey: ["alerts-feed"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error, count } = await supabase
         .from("alerts")
-        .select("id,country_iso,severity,title,message,triggered_at,countries(name,flag_emoji)")
+        .select("id,country_iso,severity,title,message,triggered_at,countries(name,flag_emoji)", { count: "exact" })
         .order("triggered_at", { ascending: false })
         .limit(30);
       if (error) throw error;
-      return (data as unknown as AlertRow[]) ?? [];
+      return { rows: (data as unknown as AlertRow[]) ?? [], total: count ?? 0 };
+    },
+  });
+
+  const { data: risks = [] } = useQuery({
+    queryKey: ["risk-dashboard"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("risk_scores")
+        .select("country_iso,probability,risk_level,crisis_type,horizon_months,generated_at,model_version")
+        .order("probability", { ascending: false });
+      if (error) throw error;
+      return (data as unknown as RiskRow[]) ?? [];
     },
   });
 
@@ -82,6 +96,12 @@ function DashboardPage() {
 
   const [refreshing, setRefreshing] = useState(false);
   const [refreshMsg, setRefreshMsg] = useState<string | null>(null);
+  const alerts = alertsFeed?.rows ?? [];
+  const alertTotal = alertsFeed?.total ?? 0;
+  const risksByCountry = useMemo(() => risks.reduce<Record<string, RiskRow[]>>((acc, row) => {
+    (acc[row.country_iso] ??= []).push(row);
+    return acc;
+  }, {}), [risks]);
   const runRefresh = async () => {
     setRefreshing(true);
     setRefreshMsg(null);
@@ -225,7 +245,7 @@ function DashboardPage() {
           <div className="glass rounded-lg">
             <div className="border-b border-border px-5 py-3 flex items-center justify-between">
               <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Live Alerts</h3>
-              <span className="font-mono text-xs flex items-center gap-1.5 text-muted-foreground"><span className="live-dot" /> {alerts.length}</span>
+              <span className="font-mono text-xs flex items-center gap-1.5 text-muted-foreground"><span className="live-dot" /> {alertTotal}</span>
             </div>
             <ul className="max-h-72 overflow-auto divide-y divide-border/60">
               {alerts.slice(0, 12).map((a) => (
@@ -283,7 +303,7 @@ function DashboardPage() {
                   <th className="px-5 py-2 font-normal">Region</th>
                   <th className="px-5 py-2 font-normal text-right cursor-pointer hover:text-foreground" onClick={() => handleSort("score")}>GFSS {sortKey === "score" && (sortDir === "asc" ? "↑" : "↓")}</th>
                   <th className="px-5 py-2 font-normal text-right cursor-pointer hover:text-foreground" onClick={() => handleSort("trend")}>30D {sortKey === "trend" && (sortDir === "asc" ? "↑" : "↓")}</th>
-                  <th className="px-5 py-2 font-normal">Category</th>
+                  <th className="px-5 py-2 font-normal">Live model</th>
                 </tr>
               </thead>
               <tbody>
@@ -305,7 +325,12 @@ function DashboardPage() {
                     <td className={`num px-5 py-3 text-right ${Number(g.trend_30d) >= 0 ? "text-risk-low" : "text-risk-critical"}`}>
                       {Number(g.trend_30d) >= 0 ? "+" : ""}{fmtNum(g.trend_30d, 2)}
                     </td>
-                    <td className={`px-5 py-3 text-xs uppercase tracking-wider ${categoryColor(g.category)}`}>{g.category}</td>
+                    <td className="px-5 py-3 text-xs uppercase tracking-wider text-muted-foreground">
+                      {(() => {
+                        const lead = sortRiskRows(risksByCountry[g.country_iso] ?? [])[0];
+                        return lead ? `${formatCrisisType(lead.crisis_type)} · ${fmtNum(lead.probability * 100, 1)}%` : g.category;
+                      })()}
+                    </td>
                   </tr>
                 ))}
                 {pageRows.length === 0 && (
