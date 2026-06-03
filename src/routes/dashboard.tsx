@@ -176,8 +176,9 @@ function DashboardPage() {
   }));
 
   const topMovers = useMemo(() => {
-    const up = [...gfss].sort((a, b) => Number(b.trend_30d) - Number(a.trend_30d)).slice(0, 5);
-    const down = [...gfss].sort((a, b) => Number(a.trend_30d) - Number(b.trend_30d)).slice(0, 5);
+    const moved = gfss.filter((g) => Number(g.trend_30d) !== 0);
+    const up = [...moved].sort((a, b) => Number(b.trend_30d) - Number(a.trend_30d)).slice(0, 5);
+    const down = [...moved].sort((a, b) => Number(a.trend_30d) - Number(b.trend_30d)).slice(0, 5);
     return { up, down };
   }, [gfss]);
 

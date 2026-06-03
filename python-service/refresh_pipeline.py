@@ -203,13 +203,9 @@ def upsert_db(feat: pd.DataFrame, feature_cols: list[str], model, model_version:
     latest["score"] = np.round((1 - probs) * 100).astype(int)
     latest["score"] = latest["score"].clip(1, 99)
 
+    prev_map: dict[str, pd.Series] = {}
     if len(prev) > 0:
-        Xp = prev[feature_cols].astype(float).to_numpy()
-        probs_prev = model.predict_proba(Xp)[:, 1]
-        prev_score = np.round((1 - probs_prev) * 100).astype(int).clip(1, 99)
-        prev_map = dict(zip(prev["iso3"], prev_score))
-    else:
-        prev_map = {}
+        prev_map = {row["iso3"]: row for _, row in prev.iterrows()}
 
     # which country ISO codes are actually in our countries table?
     res = sb_request("GET", "countries?select=iso_code")
@@ -217,23 +213,72 @@ def upsert_db(feat: pd.DataFrame, feature_cols: list[str], model, model_version:
 
     gfss_rows, risk_rows, alert_rows = [], [], []
 
+    def crisis_probs(row: pd.Series, base: float) -> list[tuple[str, float, list[dict]]]:
+        inflation = float(row.get("cpi_inflation", 0.0))
+        debt = float(row.get("govt_debt_pct_gdp", 0.0))
+        ca = float(row.get("current_account_pct_gdp", 0.0))
+        growth = float(row.get("gdp_growth", 0.0))
+        unemp = float(row.get("unemployment", 0.0))
+        reserves_yoy = float(row.get("reserves_yoy", 0.0))
+
+        def drv(items):
+            return [{"feature": f, "contribution": round(c, 4), "value": round(v, 4)}
+                    for f, c, v in items if c > 0][:5]
+
+        currency = clamp01(0.5 * clamp01((inflation - 8) / 30) + 0.3 * clamp01((-reserves_yoy - 5) / 35) + 0.2 * clamp01((-ca - 2) / 8))
+        sovereign = clamp01(0.6 * clamp01((debt - 60) / 60) + 0.25 * clamp01((inflation - 5) / 25) + 0.15 * clamp01((2 - growth) / 8))
+        banking = clamp01(0.4 * clamp01((unemp - 6) / 14) + 0.3 * clamp01((2 - growth) / 8) + 0.3 * clamp01((inflation - 8) / 25))
+        bop = clamp01(0.55 * clamp01((-ca - 3) / 8) + 0.25 * clamp01((-reserves_yoy - 5) / 35) + 0.20 * clamp01((debt - 50) / 60))
+        capflight = clamp01(0.5 * clamp01((inflation - 10) / 25) + 0.3 * clamp01((-reserves_yoy - 8) / 30) + 0.2 * clamp01((-growth + 1) / 8))
+        imf = clamp01(0.4 * clamp01((debt - 70) / 50) + 0.3 * clamp01((-ca - 4) / 8) + 0.3 * clamp01((inflation - 15) / 25))
+
+        blend = lambda x: clamp01(0.2 * base + 0.8 * x)
+        return [
+            ("currency_crisis", blend(currency), drv([
+                ("cpi_inflation", 0.5 * clamp01((inflation - 8) / 30), inflation),
+                ("reserves_yoy", 0.3 * clamp01((-reserves_yoy - 5) / 35), reserves_yoy),
+                ("current_account_pct_gdp", 0.2 * clamp01((-ca - 2) / 8), ca)])),
+            ("sovereign_debt", blend(sovereign), drv([
+                ("govt_debt_pct_gdp", 0.6 * clamp01((debt - 60) / 60), debt),
+                ("cpi_inflation", 0.25 * clamp01((inflation - 5) / 25), inflation),
+                ("gdp_growth", 0.15 * clamp01((2 - growth) / 8), growth)])),
+            ("banking_crisis", blend(banking), drv([
+                ("unemployment", 0.4 * clamp01((unemp - 6) / 14), unemp),
+                ("gdp_growth", 0.3 * clamp01((2 - growth) / 8), growth),
+                ("cpi_inflation", 0.3 * clamp01((inflation - 8) / 25), inflation)])),
+            ("bop_crisis", blend(bop), drv([
+                ("current_account_pct_gdp", 0.55 * clamp01((-ca - 3) / 8), ca),
+                ("reserves_yoy", 0.25 * clamp01((-reserves_yoy - 5) / 35), reserves_yoy),
+                ("govt_debt_pct_gdp", 0.20 * clamp01((debt - 50) / 60), debt)])),
+            ("capital_flight", blend(capflight), drv([
+                ("cpi_inflation", 0.5 * clamp01((inflation - 10) / 25), inflation),
+                ("reserves_yoy", 0.3 * clamp01((-reserves_yoy - 8) / 30), reserves_yoy),
+                ("gdp_growth", 0.2 * clamp01((-growth + 1) / 8), growth)])),
+            ("imf_bailout", blend(imf), drv([
+                ("govt_debt_pct_gdp", 0.4 * clamp01((debt - 70) / 50), debt),
+                ("current_account_pct_gdp", 0.3 * clamp01((-ca - 4) / 8), ca),
+                ("cpi_inflation", 0.3 * clamp01((inflation - 15) / 25), inflation)])),
+        ]
+
     for _, r in latest.iterrows():
         iso3 = r["iso3"]
         iso = ISO3_TO_ISO2.get(iso3, iso3)
         if iso not in existing_iso:
             continue
         model_prob = float(r["crisis_prob"])
-        stress_score, stress_drivers = indicator_stress(r)
+        stress_score, _ = indicator_stress(r)
         composite_prob = clamp01((0.25 * model_prob) + (0.75 * stress_score))
         score = int(np.clip(np.round((1 - composite_prob) * 100), 1, 99))
 
-        prev_score = int(prev_map.get(iso, score))
-        if iso3 in prev_map:
-            prev_row = prev[prev["iso3"] == iso3]
-            if not prev_row.empty:
-                prev_model_prob = float(model.predict_proba(prev_row[feature_cols].astype(float).to_numpy())[0, 1])
-                prev_stress, _ = indicator_stress(prev_row.iloc[0])
+        prev_score = score
+        prev_row = prev_map.get(iso3)
+        if prev_row is not None:
+            try:
+                prev_model_prob = float(model.predict_proba(prev_row[feature_cols].astype(float).to_numpy().reshape(1, -1))[0, 1])
+                prev_stress, _ = indicator_stress(prev_row)
                 prev_score = int(np.clip(np.round((1 - clamp01((0.25 * prev_model_prob) + (0.75 * prev_stress))) * 100), 1, 99))
+            except Exception:
+                pass
 
         trend = score - prev_score
         gfss_rows.append({
@@ -241,15 +286,16 @@ def upsert_db(feat: pd.DataFrame, feature_cols: list[str], model, model_version:
             "category": gfss_category(score), "trend_30d": trend,
         })
 
-        ci = max(0.05, min(0.15, composite_prob * 0.2))
-        risk_rows.append({
-            "country_iso": iso, "crisis_type": "currency_crisis",
-            "horizon_months": 12, "probability": round(composite_prob, 6),
-            "risk_level": risk_level(composite_prob),
-            "ci_lower": round(max(0.0, composite_prob - ci), 6),
-            "ci_upper": round(min(1.0, composite_prob + ci), 6),
-            "top_drivers": stress_drivers[:5], "model_version": f"{model_version}-macro-composite",
-        })
+        for crisis_type, prob, drivers in crisis_probs(r, model_prob):
+            ci = max(0.04, min(0.12, prob * 0.18))
+            risk_rows.append({
+                "country_iso": iso, "crisis_type": crisis_type,
+                "horizon_months": 12, "probability": round(prob, 6),
+                "risk_level": risk_level(prob),
+                "ci_lower": round(max(0.0, prob - ci), 6),
+                "ci_upper": round(min(1.0, prob + ci), 6),
+                "top_drivers": drivers, "model_version": f"{model_version}-macro-composite",
+            })
 
     raw_alerts = detect_alerts(latest)
     alert_rows = [a for a in raw_alerts if a["country_iso"] in existing_iso]
