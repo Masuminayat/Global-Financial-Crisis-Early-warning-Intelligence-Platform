@@ -17,6 +17,7 @@ import { Route as CopilotRouteImport } from './routes/copilot'
 import { Route as CompareRouteImport } from './routes/compare'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CountrySlugRouteImport } from './routes/country.$slug'
+import { Route as ApiPublicHooksRefreshPipelineRouteImport } from './routes/api/public/hooks/refresh-pipeline'
 
 const SimulatorRoute = SimulatorRouteImport.update({
   id: '/simulator',
@@ -58,6 +59,12 @@ const CountrySlugRoute = CountrySlugRouteImport.update({
   path: '/country/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicHooksRefreshPipelineRoute =
+  ApiPublicHooksRefreshPipelineRouteImport.update({
+    id: '/api/public/hooks/refresh-pipeline',
+    path: '/api/public/hooks/refresh-pipeline',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -68,6 +75,7 @@ export interface FileRoutesByFullPath {
   '/pakistan': typeof PakistanRoute
   '/simulator': typeof SimulatorRoute
   '/country/$slug': typeof CountrySlugRoute
+  '/api/public/hooks/refresh-pipeline': typeof ApiPublicHooksRefreshPipelineRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -78,6 +86,7 @@ export interface FileRoutesByTo {
   '/pakistan': typeof PakistanRoute
   '/simulator': typeof SimulatorRoute
   '/country/$slug': typeof CountrySlugRoute
+  '/api/public/hooks/refresh-pipeline': typeof ApiPublicHooksRefreshPipelineRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -89,6 +98,7 @@ export interface FileRoutesById {
   '/pakistan': typeof PakistanRoute
   '/simulator': typeof SimulatorRoute
   '/country/$slug': typeof CountrySlugRoute
+  '/api/public/hooks/refresh-pipeline': typeof ApiPublicHooksRefreshPipelineRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -101,6 +111,7 @@ export interface FileRouteTypes {
     | '/pakistan'
     | '/simulator'
     | '/country/$slug'
+    | '/api/public/hooks/refresh-pipeline'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -111,6 +122,7 @@ export interface FileRouteTypes {
     | '/pakistan'
     | '/simulator'
     | '/country/$slug'
+    | '/api/public/hooks/refresh-pipeline'
   id:
     | '__root__'
     | '/'
@@ -121,6 +133,7 @@ export interface FileRouteTypes {
     | '/pakistan'
     | '/simulator'
     | '/country/$slug'
+    | '/api/public/hooks/refresh-pipeline'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -132,6 +145,7 @@ export interface RootRouteChildren {
   PakistanRoute: typeof PakistanRoute
   SimulatorRoute: typeof SimulatorRoute
   CountrySlugRoute: typeof CountrySlugRoute
+  ApiPublicHooksRefreshPipelineRoute: typeof ApiPublicHooksRefreshPipelineRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -192,6 +206,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CountrySlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/refresh-pipeline': {
+      id: '/api/public/hooks/refresh-pipeline'
+      path: '/api/public/hooks/refresh-pipeline'
+      fullPath: '/api/public/hooks/refresh-pipeline'
+      preLoaderRoute: typeof ApiPublicHooksRefreshPipelineRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -204,7 +225,18 @@ const rootRouteChildren: RootRouteChildren = {
   PakistanRoute: PakistanRoute,
   SimulatorRoute: SimulatorRoute,
   CountrySlugRoute: CountrySlugRoute,
+  ApiPublicHooksRefreshPipelineRoute: ApiPublicHooksRefreshPipelineRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
