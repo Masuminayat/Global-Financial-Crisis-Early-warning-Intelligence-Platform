@@ -39,9 +39,9 @@ md(
     **Improvements in this version:**
 
     - Expanded the training window to **2000 → latest available year (up to 2025)**
-    - Increased coverage to **60 countries**
+    - Increased coverage to the full **World Bank universe (~206 economies)** for a much larger training set (~5k+ country-year samples after cleaning)
     - Optimizes **F1** with nested threshold tuning instead of using a fixed 0.5 cutoff
-    - Uses stronger regularization and explicit overfitting checks to keep the model stable on a small dataset
+    - Uses stronger regularization and explicit overfitting checks to keep the model stable
     """
 )
 
