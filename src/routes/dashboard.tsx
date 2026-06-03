@@ -11,25 +11,41 @@ export const Route = createFileRoute("/dashboard")({
   head: () => ({
     meta: [
       { title: "Global Dashboard — GFCEIP" },
-      { name: "description", content: "Real-time global financial stability dashboard across 33 economies." },
+      { name: "description", content: "Real-time global financial stability dashboard across the full World Bank country universe." },
     ],
   }),
   component: DashboardPage,
 });
 
-type GfssRow = { country_iso: string; score: number; category: string; trend_30d: number; countries: { name: string; slug: string; flag_emoji: string | null; region: string } };
+type GfssRow = {
+  country_iso: string;
+  score: number;
+  category: string;
+  trend_30d: number;
+  countries: { name: string; slug: string; flag_emoji: string | null; region: string; sub_region: string | null };
+};
 type AlertRow = { id: string; country_iso: string; severity: string; title: string; message: string; triggered_at: string; countries: { name: string; flag_emoji: string | null } };
+
+const CATEGORIES = ["all", "critical", "weak", "vulnerable", "stable", "strong"] as const;
+type Category = (typeof CATEGORIES)[number];
+
+type SortKey = "score" | "name" | "trend";
+const PAGE_SIZE = 30;
 
 function DashboardPage() {
   const [q, setQ] = useState("");
   const [region, setRegion] = useState<string>("all");
+  const [category, setCategory] = useState<Category>("all");
+  const [sortKey, setSortKey] = useState<SortKey>("score");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [page, setPage] = useState(1);
 
   const { data: gfss = [] } = useQuery({
     queryKey: ["gfss-all"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("gfss_scores")
-        .select("country_iso,score,category,trend_30d,countries(name,slug,flag_emoji,region)")
+        .select("country_iso,score,category,trend_30d,countries(name,slug,flag_emoji,region,sub_region)")
         .order("score", { ascending: true });
       if (error) throw error;
       return (data as unknown as GfssRow[]) ?? [];
@@ -49,7 +65,6 @@ function DashboardPage() {
     },
   });
 
-  // Realtime alerts
   useEffect(() => {
     const ch = supabase
       .channel("alerts-rt")
@@ -58,15 +73,65 @@ function DashboardPage() {
     return () => { supabase.removeChannel(ch); };
   }, [refetch]);
 
+  // Reset to first page whenever a filter changes.
+  useEffect(() => { setPage(1); }, [q, region, category, sortKey, sortDir]);
+
   const regions = useMemo(() => Array.from(new Set(gfss.map((g) => g.countries.region))).sort(), [gfss]);
-  const filtered = gfss
-    .filter((g) => (region === "all" ? true : g.countries.region === region))
-    .filter((g) => g.countries.name.toLowerCase().includes(q.toLowerCase()) || g.country_iso.toLowerCase().includes(q.toLowerCase()));
+
+  const filtered = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    const rows = gfss
+      .filter((g) => (region === "all" ? true : g.countries.region === region))
+      .filter((g) => (category === "all" ? true : g.category === category))
+      .filter((g) =>
+        !needle ||
+        g.countries.name.toLowerCase().includes(needle) ||
+        g.country_iso.toLowerCase().includes(needle) ||
+        (g.countries.sub_region ?? "").toLowerCase().includes(needle),
+      );
+    const dir = sortDir === "asc" ? 1 : -1;
+    rows.sort((a, b) => {
+      if (sortKey === "name") return a.countries.name.localeCompare(b.countries.name) * dir;
+      if (sortKey === "trend") return (Number(a.trend_30d) - Number(b.trend_30d)) * dir;
+      return (Number(a.score) - Number(b.score)) * dir;
+    });
+    return rows;
+  }, [gfss, q, region, category, sortKey, sortDir]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const pageRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  // KPI calculations
+  const kpis = useMemo(() => {
+    if (!gfss.length) return null;
+    const scores = gfss.map((g) => Number(g.score));
+    const avg = scores.reduce((s, n) => s + n, 0) / scores.length;
+    const atRisk = gfss.filter((g) => g.category === "critical" || g.category === "weak").length;
+    const trends = gfss.map((g) => Number(g.trend_30d));
+    const improving = trends.filter((t) => t > 0).length;
+    const median = (() => {
+      const s = [...scores].sort((a, b) => a - b);
+      const m = Math.floor(s.length / 2);
+      return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+    })();
+    return { avg, median, atRisk, atRiskPct: (atRisk / gfss.length) * 100, improving, improvingPct: (improving / gfss.length) * 100 };
+  }, [gfss]);
 
   const distribution = ["critical", "weak", "vulnerable", "stable", "strong"].map((c) => ({
     category: c,
     count: gfss.filter((g) => g.category === c).length,
   }));
+
+  const topMovers = useMemo(() => {
+    const up = [...gfss].sort((a, b) => Number(b.trend_30d) - Number(a.trend_30d)).slice(0, 5);
+    const down = [...gfss].sort((a, b) => Number(a.trend_30d) - Number(b.trend_30d)).slice(0, 5);
+    return { up, down };
+  }, [gfss]);
+
+  const handleSort = (key: SortKey) => {
+    if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else { setSortKey(key); setSortDir(key === "name" ? "asc" : "desc"); }
+  };
 
   return (
     <AppShell badge={`${gfss.length} markets`}>
@@ -74,25 +139,19 @@ function DashboardPage() {
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <h1 className="text-3xl font-semibold tracking-tight">Global Risk Dashboard</h1>
-            <p className="text-sm text-muted-foreground">Composite stability scores across {gfss.length} monitored economies.</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Search country…"
-              className="h-9 w-56 rounded-md border border-border bg-surface-2 px-3 text-sm outline-none focus:ring-2 focus:ring-primary/40"
-            />
-            <select
-              value={region}
-              onChange={(e) => setRegion(e.target.value)}
-              className="h-9 rounded-md border border-border bg-surface-2 px-3 text-sm"
-            >
-              <option value="all">All regions</option>
-              {regions.map((r) => <option key={r} value={r}>{r}</option>)}
-            </select>
+            <p className="text-sm text-muted-foreground">Composite stability scores across {gfss.length} monitored economies (full World Bank universe).</p>
           </div>
         </div>
+
+        {/* KPI strip */}
+        {kpis && (
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <KpiCard label="Avg GFSS" value={fmtNum(kpis.avg, 1)} sub={`Median ${fmtNum(kpis.median, 1)}`} />
+            <KpiCard label="At-Risk Markets" value={String(kpis.atRisk)} sub={`${fmtNum(kpis.atRiskPct, 1)}% critical+weak`} tone="risk" />
+            <KpiCard label="Improving (30D)" value={String(kpis.improving)} sub={`${fmtNum(kpis.improvingPct, 1)}% trending up`} tone="good" />
+            <KpiCard label="Coverage" value={`${gfss.length}`} sub={`${regions.length} regions`} />
+          </div>
+        )}
 
         <div className="mt-6 grid gap-6 lg:grid-cols-3">
           <div className="glass rounded-lg p-5 lg:col-span-2">
@@ -132,31 +191,54 @@ function DashboardPage() {
                   </div>
                 </li>
               ))}
+              {alerts.length === 0 && <li className="px-5 py-6 text-sm text-muted-foreground">No active alerts.</li>}
             </ul>
           </div>
         </div>
 
+        {/* Top movers */}
+        <div className="mt-6 grid gap-6 lg:grid-cols-2">
+          <MoversPanel title="Top 5 Improving (30D)" rows={topMovers.up} positive />
+          <MoversPanel title="Top 5 Deteriorating (30D)" rows={topMovers.down} positive={false} />
+        </div>
+
+        {/* Filters + table */}
         <div className="glass mt-8 rounded-lg overflow-hidden">
-          <div className="border-b border-border px-5 py-3 flex items-center justify-between">
+          <div className="border-b border-border px-5 py-3 flex flex-wrap items-center justify-between gap-3">
             <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">All Markets</h3>
-            <span className="font-mono text-xs text-muted-foreground">{filtered.length} of {gfss.length}</span>
+            <div className="flex flex-wrap gap-2 items-center">
+              <input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Search country, ISO, sub-region…"
+                className="h-9 w-64 rounded-md border border-border bg-surface-2 px-3 text-sm outline-none focus:ring-2 focus:ring-primary/40"
+              />
+              <select value={region} onChange={(e) => setRegion(e.target.value)} className="h-9 rounded-md border border-border bg-surface-2 px-3 text-sm">
+                <option value="all">All regions</option>
+                {regions.map((r) => <option key={r} value={r}>{r}</option>)}
+              </select>
+              <select value={category} onChange={(e) => setCategory(e.target.value as Category)} className="h-9 rounded-md border border-border bg-surface-2 px-3 text-sm capitalize">
+                {CATEGORIES.map((c) => <option key={c} value={c}>{c === "all" ? "All tiers" : c}</option>)}
+              </select>
+              <span className="font-mono text-xs text-muted-foreground">{filtered.length} of {gfss.length}</span>
+            </div>
           </div>
           <div className="overflow-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground">
                   <th className="px-5 py-2 font-normal">#</th>
-                  <th className="px-5 py-2 font-normal">Country</th>
+                  <th className="px-5 py-2 font-normal cursor-pointer hover:text-foreground" onClick={() => handleSort("name")}>Country {sortKey === "name" && (sortDir === "asc" ? "↑" : "↓")}</th>
                   <th className="px-5 py-2 font-normal">Region</th>
-                  <th className="px-5 py-2 font-normal text-right">GFSS</th>
-                  <th className="px-5 py-2 font-normal text-right">30D</th>
+                  <th className="px-5 py-2 font-normal text-right cursor-pointer hover:text-foreground" onClick={() => handleSort("score")}>GFSS {sortKey === "score" && (sortDir === "asc" ? "↑" : "↓")}</th>
+                  <th className="px-5 py-2 font-normal text-right cursor-pointer hover:text-foreground" onClick={() => handleSort("trend")}>30D {sortKey === "trend" && (sortDir === "asc" ? "↑" : "↓")}</th>
                   <th className="px-5 py-2 font-normal">Category</th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((g, i) => (
+                {pageRows.map((g, i) => (
                   <tr key={g.country_iso} className="border-t border-border/50 hover:bg-accent/30">
-                    <td className="px-5 py-3 font-mono text-muted-foreground">{String(i + 1).padStart(2, "0")}</td>
+                    <td className="px-5 py-3 font-mono text-muted-foreground">{String((page - 1) * PAGE_SIZE + i + 1).padStart(3, "0")}</td>
                     <td className="px-5 py-3">
                       <Link to="/country/$slug" params={{ slug: g.countries.slug }} className="hover:text-primary">
                         <span className="mr-2">{g.countries.flag_emoji}</span>
@@ -164,7 +246,10 @@ function DashboardPage() {
                         <span className="ml-2 font-mono text-xs text-muted-foreground">{g.country_iso}</span>
                       </Link>
                     </td>
-                    <td className="px-5 py-3 text-muted-foreground">{g.countries.region}</td>
+                    <td className="px-5 py-3 text-muted-foreground">
+                      <span>{g.countries.region}</span>
+                      {g.countries.sub_region && <span className="ml-2 text-xs opacity-70">· {g.countries.sub_region}</span>}
+                    </td>
                     <td className={`num px-5 py-3 text-right ${categoryColor(g.category)}`}>{fmtNum(g.score, 1)}</td>
                     <td className={`num px-5 py-3 text-right ${Number(g.trend_30d) >= 0 ? "text-risk-low" : "text-risk-critical"}`}>
                       {Number(g.trend_30d) >= 0 ? "+" : ""}{fmtNum(g.trend_30d, 2)}
@@ -172,11 +257,67 @@ function DashboardPage() {
                     <td className={`px-5 py-3 text-xs uppercase tracking-wider ${categoryColor(g.category)}`}>{g.category}</td>
                   </tr>
                 ))}
+                {pageRows.length === 0 && (
+                  <tr><td colSpan={6} className="px-5 py-10 text-center text-sm text-muted-foreground">No markets match these filters.</td></tr>
+                )}
               </tbody>
             </table>
           </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="border-t border-border px-5 py-3 flex items-center justify-between text-sm">
+              <span className="text-muted-foreground font-mono text-xs">
+                Page {page} of {totalPages} · showing {pageRows.length} of {filtered.length}
+              </span>
+              <div className="flex gap-1">
+                <button onClick={() => setPage(1)} disabled={page === 1} className="px-3 h-8 rounded-md border border-border bg-surface-2 disabled:opacity-40 hover:bg-accent/30">«</button>
+                <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className="px-3 h-8 rounded-md border border-border bg-surface-2 disabled:opacity-40 hover:bg-accent/30">‹</button>
+                <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="px-3 h-8 rounded-md border border-border bg-surface-2 disabled:opacity-40 hover:bg-accent/30">›</button>
+                <button onClick={() => setPage(totalPages)} disabled={page === totalPages} className="px-3 h-8 rounded-md border border-border bg-surface-2 disabled:opacity-40 hover:bg-accent/30">»</button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </AppShell>
+  );
+}
+
+function KpiCard({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: "good" | "risk" }) {
+  const toneClass = tone === "good" ? "text-risk-low" : tone === "risk" ? "text-risk-critical" : "text-foreground";
+  return (
+    <div className="glass rounded-lg p-5">
+      <div className="text-xs uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className={`mt-1 text-2xl font-semibold tabular-nums ${toneClass}`}>{value}</div>
+      {sub && <div className="mt-1 text-xs text-muted-foreground">{sub}</div>}
+    </div>
+  );
+}
+
+function MoversPanel({ title, rows, positive }: { title: string; rows: GfssRow[]; positive: boolean }) {
+  return (
+    <div className="glass rounded-lg">
+      <div className="border-b border-border px-5 py-3">
+        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{title}</h3>
+      </div>
+      <ul className="divide-y divide-border/60">
+        {rows.map((g) => (
+          <li key={g.country_iso} className="flex items-center justify-between px-5 py-3">
+            <Link to="/country/$slug" params={{ slug: g.countries.slug }} className="flex items-center gap-2 hover:text-primary min-w-0">
+              <span>{g.countries.flag_emoji}</span>
+              <span className="font-medium truncate">{g.countries.name}</span>
+              <span className="font-mono text-xs text-muted-foreground">{g.country_iso}</span>
+            </Link>
+            <div className="flex items-center gap-4 shrink-0">
+              <span className={`num text-sm ${categoryColor(g.category)}`}>{fmtNum(g.score, 1)}</span>
+              <span className={`num text-sm font-medium ${positive ? "text-risk-low" : "text-risk-critical"}`}>
+                {Number(g.trend_30d) >= 0 ? "+" : ""}{fmtNum(g.trend_30d, 2)}
+              </span>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
