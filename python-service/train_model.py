@@ -31,19 +31,8 @@ ARTIFACTS = Path(__file__).resolve().parent / 'app' / 'artifacts'
 DOCS_RESULTS = PROJECT_ROOT / 'docs' / 'RESULTS.md'
 ARTIFACTS.mkdir(parents=True, exist_ok=True)
 
-COUNTRY_SPECS = [
-    ('PAK', 'Pakistan', 'SAS'), ('IND', 'India', 'SAS'), ('BGD', 'Bangladesh', 'SAS'), ('LKA', 'Sri Lanka', 'SAS'), ('AFG', 'Afghanistan', 'SAS'), ('NPL', 'Nepal', 'SAS'),
-    ('USA', 'United States', 'NAC'), ('CAN', 'Canada', 'NAC'), ('MEX', 'Mexico', 'LAC'), ('BRA', 'Brazil', 'LAC'), ('ARG', 'Argentina', 'LAC'), ('CHL', 'Chile', 'LAC'),
-    ('COL', 'Colombia', 'LAC'), ('PER', 'Peru', 'LAC'), ('VEN', 'Venezuela', 'LAC'),
-    ('GBR', 'United Kingdom', 'EUR'), ('DEU', 'Germany', 'EUR'), ('FRA', 'France', 'EUR'), ('ITA', 'Italy', 'EUR'), ('ESP', 'Spain', 'EUR'), ('NLD', 'Netherlands', 'EUR'),
-    ('SWE', 'Sweden', 'EUR'), ('NOR', 'Norway', 'EUR'), ('CHE', 'Switzerland', 'EUR'), ('POL', 'Poland', 'EUR'), ('CZE', 'Czechia', 'EUR'), ('ROU', 'Romania', 'EUR'), ('GRC', 'Greece', 'EUR'),
-    ('UKR', 'Ukraine', 'ECA'), ('RUS', 'Russia', 'ECA'), ('TUR', 'Turkiye', 'ECA'), ('KAZ', 'Kazakhstan', 'ECA'), ('UZB', 'Uzbekistan', 'ECA'),
-    ('CHN', 'China', 'EAS'), ('JPN', 'Japan', 'EAS'), ('KOR', 'South Korea', 'EAS'), ('IDN', 'Indonesia', 'EAS'), ('VNM', 'Vietnam', 'EAS'), ('THA', 'Thailand', 'EAS'),
-    ('PHL', 'Philippines', 'EAS'), ('MYS', 'Malaysia', 'EAS'), ('SGP', 'Singapore', 'EAS'), ('AUS', 'Australia', 'EAS'), ('NZL', 'New Zealand', 'EAS'),
-    ('EGY', 'Egypt', 'MEA'), ('MAR', 'Morocco', 'MEA'), ('DZA', 'Algeria', 'MEA'), ('TUN', 'Tunisia', 'MEA'), ('SAU', 'Saudi Arabia', 'MEA'), ('ARE', 'United Arab Emirates', 'MEA'),
-    ('QAT', 'Qatar', 'MEA'), ('KWT', 'Kuwait', 'MEA'), ('LBN', 'Lebanon', 'MEA'),
-    ('ZAF', 'South Africa', 'SSA'), ('NGA', 'Nigeria', 'SSA'), ('KEN', 'Kenya', 'SSA'), ('ETH', 'Ethiopia', 'SSA'), ('GHA', 'Ghana', 'SSA'), ('TZA', 'Tanzania', 'SSA'), ('UGA', 'Uganda', 'SSA'),
-]
+from countries_catalog import CATALOG as _CATALOG  # noqa: E402
+COUNTRY_SPECS = [(iso3, name, ml_region) for (_iso2, iso3, name, ml_region, _dr, _sr) in _CATALOG]
 COUNTRIES = {iso: name for iso, name, _ in COUNTRY_SPECS}
 REGION = {iso: region for iso, _, region in COUNTRY_SPECS}
 REGIONS = sorted(set(REGION.values()))
