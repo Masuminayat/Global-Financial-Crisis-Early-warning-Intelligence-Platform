@@ -7,9 +7,9 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "GFCEIP — Global Financial Crisis Early Warning Platform" },
-      { name: "description", content: "Real-time crisis probability, GFSS stability scores, and economic intelligence for 33 countries. Bloomberg-grade analytics, open access." },
+      { name: "description", content: "Real-time crisis probability, GFSS stability scores, and economic intelligence for 200+ economies. Bloomberg-grade analytics, open access." },
       { property: "og:title", content: "GFCEIP — Global Financial Crisis Early Warning" },
-      { property: "og:description", content: "Real-time crisis probability and economic intelligence across global markets." },
+      { property: "og:description", content: "Real-time crisis probability and economic intelligence across the global market universe." },
     ],
   }),
   component: Landing,
@@ -124,7 +124,7 @@ function Landing() {
             Predicting financial crises <span className="text-primary text-glow-cyan">before</span> they happen.
           </h1>
           <p className="mt-5 max-w-2xl text-lg text-muted-foreground">
-            Continuous monitoring of 33 economies. Six crisis types. Three horizons. One composite stability index.
+            Continuous monitoring of {gfss.length || "200+"} economies. Six crisis types. Three horizons. One composite stability index.
             Built for analysts, policymakers, and traders.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
