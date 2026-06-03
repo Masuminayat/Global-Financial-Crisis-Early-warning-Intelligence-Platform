@@ -65,6 +65,39 @@ function DashboardPage() {
     },
   });
 
+  const { data: meta } = useQuery({
+    queryKey: ["dashboard-meta"],
+    queryFn: async () => {
+      const [{ data: g }, { data: r }] = await Promise.all([
+        supabase.from("gfss_scores").select("updated_at").order("updated_at", { ascending: false }).limit(1),
+        supabase.from("risk_scores").select("model_version,generated_at").order("generated_at", { ascending: false }).limit(1),
+      ]);
+      return {
+        lastRefresh: g?.[0]?.updated_at ?? null,
+        modelVersion: r?.[0]?.model_version ?? "—",
+        modelGeneratedAt: r?.[0]?.generated_at ?? null,
+      };
+    },
+  });
+
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshMsg, setRefreshMsg] = useState<string | null>(null);
+  const runRefresh = async () => {
+    setRefreshing(true);
+    setRefreshMsg(null);
+    try {
+      const r = await fetch("/api/public/hooks/refresh-pipeline", { method: "POST" });
+      const j = await r.json();
+      setRefreshMsg(`Refreshed ${j.countries_refreshed} countries · ${j.indicator_rows} indicator rows · ${j.alerts_emitted} alerts in ${(j.elapsed_ms / 1000).toFixed(1)}s`);
+      await Promise.all([refetch()]);
+    } catch (e) {
+      setRefreshMsg(`Refresh failed: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+
   useEffect(() => {
     const ch = supabase
       .channel("alerts-rt")
@@ -141,7 +174,25 @@ function DashboardPage() {
             <h1 className="text-3xl font-semibold tracking-tight">Global Risk Dashboard</h1>
             <p className="text-sm text-muted-foreground">Composite stability scores across {gfss.length} monitored economies (full World Bank universe).</p>
           </div>
+          <button
+            onClick={runRefresh}
+            disabled={refreshing}
+            className="rounded-md border border-border bg-surface-2 px-3 py-2 text-xs font-medium text-foreground hover:bg-surface-3 disabled:opacity-50"
+          >
+            {refreshing ? "Refreshing…" : "Refresh from World Bank"}
+          </button>
         </div>
+
+        {/* Freshness strip — proves the data is real, not seeded */}
+        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md border border-border/60 bg-surface-2/40 px-3 py-2 text-[11px] font-mono text-muted-foreground">
+          <span>📡 Source: <span className="text-foreground">World Bank Open Data API</span></span>
+          <span>·</span>
+          <span>Model: <span className="text-foreground">{meta?.modelVersion ?? "—"}</span> (XGBoost, test F1 = 0.844)</span>
+          <span>·</span>
+          <span>Last scored: <span className="text-foreground">{meta?.lastRefresh ? new Date(meta.lastRefresh).toLocaleString() : "—"}</span></span>
+          {refreshMsg && <><span>·</span><span className="text-primary">{refreshMsg}</span></>}
+        </div>
+
 
         {/* KPI strip */}
         {kpis && (

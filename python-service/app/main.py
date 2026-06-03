@@ -124,6 +124,23 @@ def metrics():
         raise HTTPException(404, "metrics.json not found — train the model first")
     return _METRICS
 
+@app.post("/refresh")
+def refresh(secret: Optional[str] = None):
+    """Re-fetch World Bank data, re-score all countries, push real predictions to Supabase."""
+    import os as _os
+    expected = _os.environ.get("REFRESH_SHARED_SECRET", "")
+    if expected and secret != expected:
+        raise HTTPException(401, "invalid refresh secret")
+    from pathlib import Path as _P
+    import sys as _sys
+    _sys.path.insert(0, str(_P(__file__).resolve().parents[1]))
+    from refresh_pipeline import run as _run  # noqa: E402
+    try:
+        return _run(retrain=False)
+    except Exception as e:
+        raise HTTPException(500, f"refresh failed: {e}")
+
+
 @app.get("/indicators")
 def indicators():
     return {
