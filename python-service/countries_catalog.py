@@ -1,0 +1,256 @@
+"""Single source of truth for the GFCEIP country universe.
+
+Each entry: (iso2, iso3, name, ml_region, dash_region, dash_sub_region)
+
+- iso2 / iso3 / name: identity
+- ml_region: compact region code used by the ML pipeline (one-hot input).
+  One of: EAS, ECA, EUR, LAC, MEA, NAC, SAS, SSA
+- dash_region / dash_sub_region: human labels shown in the frontend dashboard.
+"""
+
+from __future__ import annotations
+
+CATALOG: list[tuple[str, str, str, str, str, str]] = [
+    # --- South Asia (SAS) ---
+    ("PK", "PAK", "Pakistan", "SAS", "Asia", "Southern Asia"),
+    ("IN", "IND", "India", "SAS", "Asia", "Southern Asia"),
+    ("BD", "BGD", "Bangladesh", "SAS", "Asia", "Southern Asia"),
+    ("LK", "LKA", "Sri Lanka", "SAS", "Asia", "Southern Asia"),
+    ("AF", "AFG", "Afghanistan", "SAS", "Asia", "Southern Asia"),
+    ("NP", "NPL", "Nepal", "SAS", "Asia", "Southern Asia"),
+    ("BT", "BTN", "Bhutan", "SAS", "Asia", "Southern Asia"),
+    ("MV", "MDV", "Maldives", "SAS", "Asia", "Southern Asia"),
+
+    # --- North America (NAC) ---
+    ("US", "USA", "United States", "NAC", "Americas", "Northern America"),
+    ("CA", "CAN", "Canada", "NAC", "Americas", "Northern America"),
+    ("BM", "BMU", "Bermuda", "NAC", "Americas", "Northern America"),
+
+    # --- Latin America & Caribbean (LAC) ---
+    ("MX", "MEX", "Mexico", "LAC", "Americas", "Central America"),
+    ("BR", "BRA", "Brazil", "LAC", "Americas", "South America"),
+    ("AR", "ARG", "Argentina", "LAC", "Americas", "South America"),
+    ("CL", "CHL", "Chile", "LAC", "Americas", "South America"),
+    ("CO", "COL", "Colombia", "LAC", "Americas", "South America"),
+    ("PE", "PER", "Peru", "LAC", "Americas", "South America"),
+    ("VE", "VEN", "Venezuela", "LAC", "Americas", "South America"),
+    ("UY", "URY", "Uruguay", "LAC", "Americas", "South America"),
+    ("PY", "PRY", "Paraguay", "LAC", "Americas", "South America"),
+    ("BO", "BOL", "Bolivia", "LAC", "Americas", "South America"),
+    ("EC", "ECU", "Ecuador", "LAC", "Americas", "South America"),
+    ("GY", "GUY", "Guyana", "LAC", "Americas", "South America"),
+    ("SR", "SUR", "Suriname", "LAC", "Americas", "South America"),
+    ("CR", "CRI", "Costa Rica", "LAC", "Americas", "Central America"),
+    ("PA", "PAN", "Panama", "LAC", "Americas", "Central America"),
+    ("GT", "GTM", "Guatemala", "LAC", "Americas", "Central America"),
+    ("HN", "HND", "Honduras", "LAC", "Americas", "Central America"),
+    ("SV", "SLV", "El Salvador", "LAC", "Americas", "Central America"),
+    ("NI", "NIC", "Nicaragua", "LAC", "Americas", "Central America"),
+    ("BZ", "BLZ", "Belize", "LAC", "Americas", "Central America"),
+    ("CU", "CUB", "Cuba", "LAC", "Americas", "Caribbean"),
+    ("DO", "DOM", "Dominican Republic", "LAC", "Americas", "Caribbean"),
+    ("HT", "HTI", "Haiti", "LAC", "Americas", "Caribbean"),
+    ("JM", "JAM", "Jamaica", "LAC", "Americas", "Caribbean"),
+    ("TT", "TTO", "Trinidad and Tobago", "LAC", "Americas", "Caribbean"),
+    ("BS", "BHS", "Bahamas", "LAC", "Americas", "Caribbean"),
+    ("BB", "BRB", "Barbados", "LAC", "Americas", "Caribbean"),
+    ("AG", "ATG", "Antigua and Barbuda", "LAC", "Americas", "Caribbean"),
+    ("DM", "DMA", "Dominica", "LAC", "Americas", "Caribbean"),
+    ("GD", "GRD", "Grenada", "LAC", "Americas", "Caribbean"),
+    ("KN", "KNA", "St. Kitts and Nevis", "LAC", "Americas", "Caribbean"),
+    ("LC", "LCA", "St. Lucia", "LAC", "Americas", "Caribbean"),
+    ("VC", "VCT", "St. Vincent and the Grenadines", "LAC", "Americas", "Caribbean"),
+    ("PR", "PRI", "Puerto Rico", "LAC", "Americas", "Caribbean"),
+    ("AW", "ABW", "Aruba", "LAC", "Americas", "Caribbean"),
+    ("CW", "CUW", "Curacao", "LAC", "Americas", "Caribbean"),
+    ("KY", "CYM", "Cayman Islands", "LAC", "Americas", "Caribbean"),
+
+    # --- Europe (EUR — Western/Northern/Southern EU & adjacent) ---
+    ("GB", "GBR", "United Kingdom", "EUR", "Europe", "Northern Europe"),
+    ("DE", "DEU", "Germany", "EUR", "Europe", "Western Europe"),
+    ("FR", "FRA", "France", "EUR", "Europe", "Western Europe"),
+    ("IT", "ITA", "Italy", "EUR", "Europe", "Southern Europe"),
+    ("ES", "ESP", "Spain", "EUR", "Europe", "Southern Europe"),
+    ("PT", "PRT", "Portugal", "EUR", "Europe", "Southern Europe"),
+    ("NL", "NLD", "Netherlands", "EUR", "Europe", "Western Europe"),
+    ("BE", "BEL", "Belgium", "EUR", "Europe", "Western Europe"),
+    ("LU", "LUX", "Luxembourg", "EUR", "Europe", "Western Europe"),
+    ("IE", "IRL", "Ireland", "EUR", "Europe", "Northern Europe"),
+    ("AT", "AUT", "Austria", "EUR", "Europe", "Western Europe"),
+    ("CH", "CHE", "Switzerland", "EUR", "Europe", "Western Europe"),
+    ("LI", "LIE", "Liechtenstein", "EUR", "Europe", "Western Europe"),
+    ("MC", "MCO", "Monaco", "EUR", "Europe", "Western Europe"),
+    ("SE", "SWE", "Sweden", "EUR", "Europe", "Northern Europe"),
+    ("NO", "NOR", "Norway", "EUR", "Europe", "Northern Europe"),
+    ("DK", "DNK", "Denmark", "EUR", "Europe", "Northern Europe"),
+    ("FI", "FIN", "Finland", "EUR", "Europe", "Northern Europe"),
+    ("IS", "ISL", "Iceland", "EUR", "Europe", "Northern Europe"),
+    ("EE", "EST", "Estonia", "EUR", "Europe", "Northern Europe"),
+    ("LV", "LVA", "Latvia", "EUR", "Europe", "Northern Europe"),
+    ("LT", "LTU", "Lithuania", "EUR", "Europe", "Northern Europe"),
+    ("PL", "POL", "Poland", "EUR", "Europe", "Eastern Europe"),
+    ("CZ", "CZE", "Czechia", "EUR", "Europe", "Eastern Europe"),
+    ("SK", "SVK", "Slovak Republic", "EUR", "Europe", "Eastern Europe"),
+    ("HU", "HUN", "Hungary", "EUR", "Europe", "Eastern Europe"),
+    ("RO", "ROU", "Romania", "EUR", "Europe", "Eastern Europe"),
+    ("BG", "BGR", "Bulgaria", "EUR", "Europe", "Eastern Europe"),
+    ("HR", "HRV", "Croatia", "EUR", "Europe", "Southern Europe"),
+    ("SI", "SVN", "Slovenia", "EUR", "Europe", "Southern Europe"),
+    ("GR", "GRC", "Greece", "EUR", "Europe", "Southern Europe"),
+    ("CY", "CYP", "Cyprus", "EUR", "Europe", "Southern Europe"),
+    ("MT", "MLT", "Malta", "EUR", "Europe", "Southern Europe"),
+    ("AD", "AND", "Andorra", "EUR", "Europe", "Southern Europe"),
+    ("SM", "SMR", "San Marino", "EUR", "Europe", "Southern Europe"),
+    ("FO", "FRO", "Faroe Islands", "EUR", "Europe", "Northern Europe"),
+    ("GL", "GRL", "Greenland", "EUR", "Americas", "Northern America"),
+    ("IM", "IMN", "Isle of Man", "EUR", "Europe", "Northern Europe"),
+
+    # --- Europe & Central Asia (ECA — non-EU east + central asia) ---
+    ("UA", "UKR", "Ukraine", "ECA", "Europe", "Eastern Europe"),
+    ("RU", "RUS", "Russia", "ECA", "Europe", "Eastern Europe"),
+    ("BY", "BLR", "Belarus", "ECA", "Europe", "Eastern Europe"),
+    ("MD", "MDA", "Moldova", "ECA", "Europe", "Eastern Europe"),
+    ("TR", "TUR", "Turkiye", "ECA", "Asia", "Western Asia"),
+    ("RS", "SRB", "Serbia", "ECA", "Europe", "Southern Europe"),
+    ("ME", "MNE", "Montenegro", "ECA", "Europe", "Southern Europe"),
+    ("MK", "MKD", "North Macedonia", "ECA", "Europe", "Southern Europe"),
+    ("BA", "BIH", "Bosnia and Herzegovina", "ECA", "Europe", "Southern Europe"),
+    ("AL", "ALB", "Albania", "ECA", "Europe", "Southern Europe"),
+    ("XK", "XKX", "Kosovo", "ECA", "Europe", "Southern Europe"),
+    ("KZ", "KAZ", "Kazakhstan", "ECA", "Asia", "Central Asia"),
+    ("UZ", "UZB", "Uzbekistan", "ECA", "Asia", "Central Asia"),
+    ("KG", "KGZ", "Kyrgyz Republic", "ECA", "Asia", "Central Asia"),
+    ("TJ", "TJK", "Tajikistan", "ECA", "Asia", "Central Asia"),
+    ("TM", "TKM", "Turkmenistan", "ECA", "Asia", "Central Asia"),
+    ("AM", "ARM", "Armenia", "ECA", "Asia", "Western Asia"),
+    ("AZ", "AZE", "Azerbaijan", "ECA", "Asia", "Western Asia"),
+    ("GE", "GEO", "Georgia", "ECA", "Asia", "Western Asia"),
+
+    # --- East Asia & Pacific (EAS) ---
+    ("CN", "CHN", "China", "EAS", "Asia", "Eastern Asia"),
+    ("JP", "JPN", "Japan", "EAS", "Asia", "Eastern Asia"),
+    ("KR", "KOR", "South Korea", "EAS", "Asia", "Eastern Asia"),
+    ("MN", "MNG", "Mongolia", "EAS", "Asia", "Eastern Asia"),
+    ("HK", "HKG", "Hong Kong SAR", "EAS", "Asia", "Eastern Asia"),
+    ("MO", "MAC", "Macao SAR", "EAS", "Asia", "Eastern Asia"),
+    ("ID", "IDN", "Indonesia", "EAS", "Asia", "South-eastern Asia"),
+    ("VN", "VNM", "Vietnam", "EAS", "Asia", "South-eastern Asia"),
+    ("TH", "THA", "Thailand", "EAS", "Asia", "South-eastern Asia"),
+    ("PH", "PHL", "Philippines", "EAS", "Asia", "South-eastern Asia"),
+    ("MY", "MYS", "Malaysia", "EAS", "Asia", "South-eastern Asia"),
+    ("SG", "SGP", "Singapore", "EAS", "Asia", "South-eastern Asia"),
+    ("KH", "KHM", "Cambodia", "EAS", "Asia", "South-eastern Asia"),
+    ("LA", "LAO", "Laos", "EAS", "Asia", "South-eastern Asia"),
+    ("MM", "MMR", "Myanmar", "EAS", "Asia", "South-eastern Asia"),
+    ("BN", "BRN", "Brunei", "EAS", "Asia", "South-eastern Asia"),
+    ("TL", "TLS", "Timor-Leste", "EAS", "Asia", "South-eastern Asia"),
+    ("AU", "AUS", "Australia", "EAS", "Oceania", "Australia and New Zealand"),
+    ("NZ", "NZL", "New Zealand", "EAS", "Oceania", "Australia and New Zealand"),
+    ("FJ", "FJI", "Fiji", "EAS", "Oceania", "Melanesia"),
+    ("PG", "PNG", "Papua New Guinea", "EAS", "Oceania", "Melanesia"),
+    ("SB", "SLB", "Solomon Islands", "EAS", "Oceania", "Melanesia"),
+    ("VU", "VUT", "Vanuatu", "EAS", "Oceania", "Melanesia"),
+    ("NC", "NCL", "New Caledonia", "EAS", "Oceania", "Melanesia"),
+    ("PF", "PYF", "French Polynesia", "EAS", "Oceania", "Polynesia"),
+    ("WS", "WSM", "Samoa", "EAS", "Oceania", "Polynesia"),
+    ("TO", "TON", "Tonga", "EAS", "Oceania", "Polynesia"),
+    ("TV", "TUV", "Tuvalu", "EAS", "Oceania", "Polynesia"),
+    ("KI", "KIR", "Kiribati", "EAS", "Oceania", "Micronesia"),
+    ("MH", "MHL", "Marshall Islands", "EAS", "Oceania", "Micronesia"),
+    ("FM", "FSM", "Micronesia", "EAS", "Oceania", "Micronesia"),
+    ("NR", "NRU", "Nauru", "EAS", "Oceania", "Micronesia"),
+    ("PW", "PLW", "Palau", "EAS", "Oceania", "Micronesia"),
+
+    # --- Middle East & North Africa (MEA) ---
+    ("EG", "EGY", "Egypt", "MEA", "Africa", "Northern Africa"),
+    ("MA", "MAR", "Morocco", "MEA", "Africa", "Northern Africa"),
+    ("DZ", "DZA", "Algeria", "MEA", "Africa", "Northern Africa"),
+    ("TN", "TUN", "Tunisia", "MEA", "Africa", "Northern Africa"),
+    ("LY", "LBY", "Libya", "MEA", "Africa", "Northern Africa"),
+    ("SA", "SAU", "Saudi Arabia", "MEA", "Asia", "Western Asia"),
+    ("AE", "ARE", "United Arab Emirates", "MEA", "Asia", "Western Asia"),
+    ("QA", "QAT", "Qatar", "MEA", "Asia", "Western Asia"),
+    ("KW", "KWT", "Kuwait", "MEA", "Asia", "Western Asia"),
+    ("BH", "BHR", "Bahrain", "MEA", "Asia", "Western Asia"),
+    ("OM", "OMN", "Oman", "MEA", "Asia", "Western Asia"),
+    ("YE", "YEM", "Yemen", "MEA", "Asia", "Western Asia"),
+    ("JO", "JOR", "Jordan", "MEA", "Asia", "Western Asia"),
+    ("LB", "LBN", "Lebanon", "MEA", "Asia", "Western Asia"),
+    ("SY", "SYR", "Syria", "MEA", "Asia", "Western Asia"),
+    ("IQ", "IRQ", "Iraq", "MEA", "Asia", "Western Asia"),
+    ("IR", "IRN", "Iran", "MEA", "Asia", "Southern Asia"),
+    ("IL", "ISR", "Israel", "MEA", "Asia", "Western Asia"),
+    ("PS", "PSE", "West Bank and Gaza", "MEA", "Asia", "Western Asia"),
+    ("DJ", "DJI", "Djibouti", "MEA", "Africa", "Eastern Africa"),
+
+    # --- Sub-Saharan Africa (SSA) ---
+    ("ZA", "ZAF", "South Africa", "SSA", "Africa", "Southern Africa"),
+    ("NG", "NGA", "Nigeria", "SSA", "Africa", "Western Africa"),
+    ("KE", "KEN", "Kenya", "SSA", "Africa", "Eastern Africa"),
+    ("ET", "ETH", "Ethiopia", "SSA", "Africa", "Eastern Africa"),
+    ("GH", "GHA", "Ghana", "SSA", "Africa", "Western Africa"),
+    ("TZ", "TZA", "Tanzania", "SSA", "Africa", "Eastern Africa"),
+    ("UG", "UGA", "Uganda", "SSA", "Africa", "Eastern Africa"),
+    ("AO", "AGO", "Angola", "SSA", "Africa", "Middle Africa"),
+    ("CM", "CMR", "Cameroon", "SSA", "Africa", "Middle Africa"),
+    ("CI", "CIV", "Cote d'Ivoire", "SSA", "Africa", "Western Africa"),
+    ("SN", "SEN", "Senegal", "SSA", "Africa", "Western Africa"),
+    ("ML", "MLI", "Mali", "SSA", "Africa", "Western Africa"),
+    ("BF", "BFA", "Burkina Faso", "SSA", "Africa", "Western Africa"),
+    ("NE", "NER", "Niger", "SSA", "Africa", "Western Africa"),
+    ("BJ", "BEN", "Benin", "SSA", "Africa", "Western Africa"),
+    ("TG", "TGO", "Togo", "SSA", "Africa", "Western Africa"),
+    ("GN", "GIN", "Guinea", "SSA", "Africa", "Western Africa"),
+    ("GW", "GNB", "Guinea-Bissau", "SSA", "Africa", "Western Africa"),
+    ("SL", "SLE", "Sierra Leone", "SSA", "Africa", "Western Africa"),
+    ("LR", "LBR", "Liberia", "SSA", "Africa", "Western Africa"),
+    ("MR", "MRT", "Mauritania", "SSA", "Africa", "Western Africa"),
+    ("GM", "GMB", "Gambia", "SSA", "Africa", "Western Africa"),
+    ("CV", "CPV", "Cabo Verde", "SSA", "Africa", "Western Africa"),
+    ("ST", "STP", "Sao Tome and Principe", "SSA", "Africa", "Middle Africa"),
+    ("CF", "CAF", "Central African Republic", "SSA", "Africa", "Middle Africa"),
+    ("CD", "COD", "Congo (Kinshasa)", "SSA", "Africa", "Middle Africa"),
+    ("CG", "COG", "Congo (Brazzaville)", "SSA", "Africa", "Middle Africa"),
+    ("GA", "GAB", "Gabon", "SSA", "Africa", "Middle Africa"),
+    ("GQ", "GNQ", "Equatorial Guinea", "SSA", "Africa", "Middle Africa"),
+    ("TD", "TCD", "Chad", "SSA", "Africa", "Middle Africa"),
+    ("SD", "SDN", "Sudan", "SSA", "Africa", "Northern Africa"),
+    ("SS", "SSD", "South Sudan", "SSA", "Africa", "Eastern Africa"),
+    ("SO", "SOM", "Somalia", "SSA", "Africa", "Eastern Africa"),
+    ("ER", "ERI", "Eritrea", "SSA", "Africa", "Eastern Africa"),
+    ("RW", "RWA", "Rwanda", "SSA", "Africa", "Eastern Africa"),
+    ("BI", "BDI", "Burundi", "SSA", "Africa", "Eastern Africa"),
+    ("MG", "MDG", "Madagascar", "SSA", "Africa", "Eastern Africa"),
+    ("MU", "MUS", "Mauritius", "SSA", "Africa", "Eastern Africa"),
+    ("SC", "SYC", "Seychelles", "SSA", "Africa", "Eastern Africa"),
+    ("KM", "COM", "Comoros", "SSA", "Africa", "Eastern Africa"),
+    ("MZ", "MOZ", "Mozambique", "SSA", "Africa", "Eastern Africa"),
+    ("MW", "MWI", "Malawi", "SSA", "Africa", "Eastern Africa"),
+    ("ZM", "ZMB", "Zambia", "SSA", "Africa", "Eastern Africa"),
+    ("ZW", "ZWE", "Zimbabwe", "SSA", "Africa", "Eastern Africa"),
+    ("BW", "BWA", "Botswana", "SSA", "Africa", "Southern Africa"),
+    ("NA", "NAM", "Namibia", "SSA", "Africa", "Southern Africa"),
+    ("SZ", "SWZ", "Eswatini", "SSA", "Africa", "Southern Africa"),
+    ("LS", "LSO", "Lesotho", "SSA", "Africa", "Southern Africa"),
+]
+
+
+def slug_for(name: str) -> str:
+    return (
+        name.lower()
+        .replace("'", "")
+        .replace(".", "")
+        .replace(",", "")
+        .replace("(", "")
+        .replace(")", "")
+        .replace("&", "and")
+        .replace("  ", " ")
+        .strip()
+        .replace(" ", "-")
+    )
+
+
+def flag_emoji(iso2: str) -> str:
+    if not iso2 or len(iso2) != 2 or not iso2.isalpha():
+        return ""
+    return "".join(chr(0x1F1E6 + (ord(c.upper()) - ord("A"))) for c in iso2)
