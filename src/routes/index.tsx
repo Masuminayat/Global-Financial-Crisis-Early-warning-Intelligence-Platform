@@ -7,9 +7,9 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "GFCEIP — Global Financial Crisis Early Warning Platform" },
-      { name: "description", content: "Real-time crisis probability, GFSS stability scores, and economic intelligence for 33 countries. Bloomberg-grade analytics, open access." },
+      { name: "description", content: "Real-time crisis probability, GFSS stability scores, and economic intelligence for 200+ economies. Bloomberg-grade analytics, open access." },
       { property: "og:title", content: "GFCEIP — Global Financial Crisis Early Warning" },
-      { property: "og:description", content: "Real-time crisis probability and economic intelligence across global markets." },
+      { property: "og:description", content: "Real-time crisis probability and economic intelligence across the global market universe." },
     ],
   }),
   component: Landing,
