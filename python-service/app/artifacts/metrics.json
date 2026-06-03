@@ -1,139 +1,255 @@
 {
+  "model_version": "xgboost-20260603",
+  "selected_model": "XGBoost",
+  "selection_metric": "cv_f1",
+  "threshold_strategy": "Nested calibration split inside each CV fold with F1-optimal threshold; final threshold is the mean fold threshold.",
+  "threshold": 0.5655523359775543,
   "models": {
     "Logistic Regression": {
       "cv": {
         "acc": {
-          "mean": 0.782,
-          "std": 0.031
+          "mean": 0.8306473895582329,
+          "std": 0.039423674632309044
         },
         "prec": {
-          "mean": 0.585,
-          "std": 0.067
+          "mean": 0.6258265965343133,
+          "std": 0.10318086331153559
         },
         "rec": {
-          "mean": 0.713,
-          "std": 0.055
+          "mean": 0.5991291727140784,
+          "std": 0.1346372708805258
         },
         "f1": {
-          "mean": 0.64,
-          "std": 0.042
+          "mean": 0.5953113332956649,
+          "std": 0.08677150601661916
         },
         "auc": {
-          "mean": 0.846,
-          "std": 0.022
+          "mean": 0.8240730188032718,
+          "std": 0.05159206339589651
+        },
+        "threshold": {
+          "mean": 0.64440560577085,
+          "std": 0.09759598600466007
+        },
+        "train_auc": {
+          "mean": 0.8837042815137218,
+          "std": 0.009696831250171536
+        },
+        "auc_gap": {
+          "mean": 0.05963126271045005,
+          "std": 0.0
         }
       },
       "test": {
-        "accuracy": 0.0,
-        "precision": 0.553,
-        "recall": 0.722,
-        "f1": 0.627,
-        "roc_auc": 0.822
-      }
+        "accuracy": 0.8397435897435898,
+        "precision": 0.6290322580645161,
+        "recall": 0.5909090909090909,
+        "f1": 0.609375,
+        "roc_auc": 0.8036462182803646,
+        "threshold": 0.64440560577085
+      },
+      "verdict": "Healthy generalization"
     },
     "Random Forest": {
       "cv": {
         "acc": {
-          "mean": 0.871,
-          "std": 0.038
+          "mean": 0.9036979919678716,
+          "std": 0.026735808945006167
         },
         "prec": {
-          "mean": 0.798,
-          "std": 0.098
+          "mean": 0.8034906270200388,
+          "std": 0.0793481345085868
         },
         "rec": {
-          "mean": 0.713,
-          "std": 0.042
+          "mean": 0.7314223512336719,
+          "std": 0.06591577119805077
         },
         "f1": {
-          "mean": 0.752,
-          "std": 0.065
+          "mean": 0.7634868696373186,
+          "std": 0.06059749575944687
         },
         "auc": {
-          "mean": 0.903,
-          "std": 0.025
+          "mean": 0.9120780036797933,
+          "std": 0.030098972963432575
+        },
+        "threshold": {
+          "mean": 0.46779185819516195,
+          "std": 0.04806373954039842
+        },
+        "train_auc": {
+          "mean": 0.991721577574709,
+          "std": 0.0005644175200583796
+        },
+        "auc_gap": {
+          "mean": 0.07964357389491572,
+          "std": 0.0
         }
       },
       "test": {
-        "accuracy": 0.0,
-        "precision": 0.75,
-        "recall": 0.833,
-        "f1": 0.789,
-        "roc_auc": 0.916
-      }
+        "accuracy": 0.8621794871794872,
+        "precision": 0.7017543859649122,
+        "recall": 0.6060606060606061,
+        "f1": 0.6504065040650406,
+        "roc_auc": 0.8766321754126631,
+        "threshold": 0.46779185819516195
+      },
+      "verdict": "Healthy generalization"
     },
     "XGBoost": {
       "cv": {
         "acc": {
-          "mean": 0.881,
-          "std": 0.013
+          "mean": 0.9093076305220883,
+          "std": 0.011820034473221544
         },
         "prec": {
-          "mean": 0.823,
-          "std": 0.035
+          "mean": 0.8494001521042879,
+          "std": 0.04204332571788187
         },
         "rec": {
-          "mean": 0.713,
-          "std": 0.031
+          "mean": 0.6971698113207547,
+          "std": 0.029892414184443144
         },
         "f1": {
-          "mean": 0.764,
-          "std": 0.027
+          "mean": 0.7652564337864999,
+          "std": 0.028380596344684067
         },
         "auc": {
-          "mean": 0.919,
-          "std": 0.022
+          "mean": 0.9208348563062808,
+          "std": 0.031856408513907676
+        },
+        "threshold": {
+          "mean": 0.5655523359775543,
+          "std": 0.06746499085156932
+        },
+        "train_auc": {
+          "mean": 0.9996857607726428,
+          "std": 0.00014915310864001507
+        },
+        "auc_gap": {
+          "mean": 0.078850904466362,
+          "std": 0.0
         }
       },
       "test": {
-        "accuracy": 0.0,
-        "precision": 0.853,
-        "recall": 0.806,
-        "f1": 0.829,
-        "roc_auc": 0.932
-      }
-    },
-    "LightGBM": {
-      "cv": {
-        "acc": {
-          "mean": 0.8882659478885895,
-          "std": 0.006922928131639617
-        },
-        "prec": {
-          "mean": 0.8511787777439951,
-          "std": 0.024806214496959477
-        },
-        "rec": {
-          "mean": 0.7130541871921183,
-          "std": 0.01765856978220188
-        },
-        "f1": {
-          "mean": 0.7756361394186033,
-          "std": 0.01225701169200529
-        },
-        "auc": {
-          "mean": 0.9196884396391786,
-          "std": 0.020406653068320155
-        }
+        "accuracy": 0.8782051282051282,
+        "precision": 0.7692307692307693,
+        "recall": 0.6060606060606061,
+        "f1": 0.6779661016949152,
+        "roc_auc": 0.8882729736388274,
+        "threshold": 0.5655523359775543
       },
-      "test": {
-        "accuracy": 0.9242424242424242,
-        "precision": 0.9642857142857143,
-        "recall": 0.75,
-        "f1": 0.84375,
-        "roc_auc": 0.9375
-      }
+      "verdict": "Healthy generalization"
     }
   },
-  "n_features": 43,
-  "n_train": 528,
-  "n_test": 132,
-  "class_balance": 0.27121212121212124,
-  "n_samples": 660,
-  "n_countries": 33,
+  "cv": {
+    "acc": {
+      "mean": 0.9093076305220883,
+      "std": 0.011820034473221544
+    },
+    "prec": {
+      "mean": 0.8494001521042879,
+      "std": 0.04204332571788187
+    },
+    "rec": {
+      "mean": 0.6971698113207547,
+      "std": 0.029892414184443144
+    },
+    "f1": {
+      "mean": 0.7652564337864999,
+      "std": 0.028380596344684067
+    },
+    "auc": {
+      "mean": 0.9208348563062808,
+      "std": 0.031856408513907676
+    },
+    "threshold": {
+      "mean": 0.5655523359775543,
+      "std": 0.06746499085156932
+    },
+    "train_auc": {
+      "mean": 0.9996857607726428,
+      "std": 0.00014915310864001507
+    },
+    "auc_gap": {
+      "mean": 0.078850904466362,
+      "std": 0.0
+    }
+  },
+  "test": {
+    "accuracy": 0.8782051282051282,
+    "precision": 0.7692307692307693,
+    "recall": 0.6060606060606061,
+    "f1": 0.6779661016949152,
+    "roc_auc": 0.8882729736388274,
+    "threshold": 0.5655523359775543
+  },
+  "n_features": 52,
+  "n_train": 1246,
+  "n_test": 312,
+  "class_balance": 0.21181001283697048,
+  "n_samples": 1558,
+  "n_countries": 60,
   "n_indicators": 8,
-  "year_range": [
-    2004,
-    2023
+  "year_range_requested": [
+    2000,
+    2025
+  ],
+  "year_range_actual": [
+    2000,
+    2025
+  ],
+  "feature_cols": [
+    "cpi_inflation",
+    "current_account_pct_gdp",
+    "exports_pct_gdp",
+    "gdp_growth",
+    "govt_debt_pct_gdp",
+    "real_interest_rate",
+    "reserves_usd",
+    "unemployment",
+    "cpi_yoy_chg",
+    "reserves_yoy",
+    "debt_yoy_chg",
+    "growth_yoy_chg",
+    "cpi_inflation_lag1",
+    "cpi_inflation_ma3",
+    "cpi_inflation_std3",
+    "cpi_inflation_d1",
+    "reserves_usd_lag1",
+    "reserves_usd_ma3",
+    "reserves_usd_std3",
+    "reserves_usd_d1",
+    "current_account_pct_gdp_lag1",
+    "current_account_pct_gdp_ma3",
+    "current_account_pct_gdp_std3",
+    "current_account_pct_gdp_d1",
+    "govt_debt_pct_gdp_lag1",
+    "govt_debt_pct_gdp_ma3",
+    "govt_debt_pct_gdp_std3",
+    "govt_debt_pct_gdp_d1",
+    "gdp_growth_lag1",
+    "gdp_growth_ma3",
+    "gdp_growth_std3",
+    "gdp_growth_d1",
+    "unemployment_lag1",
+    "unemployment_ma3",
+    "unemployment_std3",
+    "unemployment_d1",
+    "real_interest_rate_lag1",
+    "real_interest_rate_ma3",
+    "real_interest_rate_std3",
+    "real_interest_rate_d1",
+    "exports_pct_gdp_lag1",
+    "exports_pct_gdp_ma3",
+    "exports_pct_gdp_std3",
+    "exports_pct_gdp_d1",
+    "reg_EAS",
+    "reg_ECA",
+    "reg_EUR",
+    "reg_LAC",
+    "reg_MEA",
+    "reg_NAC",
+    "reg_SAS",
+    "reg_SSA"
   ]
 }
