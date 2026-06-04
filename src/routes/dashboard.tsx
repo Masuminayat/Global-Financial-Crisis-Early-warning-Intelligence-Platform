@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/AppShell";
@@ -7,6 +8,7 @@ import { categoryColor, fmtNum, severityDot } from "@/lib/format";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { ClientChart } from "@/components/ClientChart";
 import { formatCrisisType, sortRiskRows } from "@/lib/macro";
+import { triggerRefresh } from "@/lib/refresh.functions";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
