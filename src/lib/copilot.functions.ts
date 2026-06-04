@@ -15,36 +15,51 @@ export const askCopilot = createServerFn({ method: "POST" })
     const apiKey = process.env.LOVABLE_API_KEY;
     if (!apiKey) throw new Error("LOVABLE_API_KEY not configured");
 
-    // Pull a small snapshot of context from DB so the model can answer factually
-    const [{ data: gfss }, { data: alerts }] = await Promise.all([
+    // Pull a richer snapshot from DB so the model can answer factually
+    const [{ data: gfssAll }, { data: alerts }] = await Promise.all([
       supabaseAdmin
         .from("gfss_scores")
         .select("country_iso,score,category,trend_30d,countries(name,region)")
         .order("score", { ascending: true })
-        .limit(20),
+        .limit(80),
       supabaseAdmin
         .from("alerts")
         .select("country_iso,severity,title,triggered_at")
         .order("triggered_at", { ascending: false })
-        .limit(10),
+        .limit(20),
     ]);
 
+    const allScores = (gfssAll ?? []).map((g) => ({
+      iso: g.country_iso,
+      name: (g as { countries: { name: string } | null }).countries?.name,
+      region: (g as { countries: { region: string } | null }).countries?.region,
+      score: Number(g.score),
+      category: g.category,
+      trend_30d: g.trend_30d,
+    }));
+
     const context = {
-      most_vulnerable: gfss?.map((g) => ({
-        iso: g.country_iso,
-        name: (g as { countries: { name: string } | null }).countries?.name,
-        score: Number(g.score),
-        category: g.category,
-      })),
+      countries_count: allScores.length,
+      most_vulnerable: allScores.slice(0, 15),
+      most_stable: [...allScores].reverse().slice(0, 10),
+      all_scores: allScores,
       recent_alerts: alerts,
     };
 
-    const systemPrompt = `You are GFCEIP Copilot, a senior macro analyst.
-Answer using the JSON snapshot below as ground truth. Be concise, cite the GFSS score and category when relevant.
-Never invent data not present in the snapshot. If asked for forecasts, explain they are model-based with confidence intervals.
+    const systemPrompt = `You are GFCEIP Copilot, a senior macro analyst for the Global Financial Crisis Early Intelligence Platform.
+
+You have TWO sources of knowledge:
+1. The LIVE DATA SNAPSHOT below — use it as ground truth for current GFSS scores, categories, trends, and alerts. Cite specific scores when relevant.
+2. Your general training knowledge of macroeconomics, country fundamentals, financial history, monetary policy, currencies, and geopolitics — use this freely to add context, explain mechanisms, and answer broader questions.
+
+Guidelines:
+- Be helpful, direct, and concise. Never refuse a reasonable macro/finance/country question.
+- If a specific country isn't in the snapshot, still answer from general knowledge and say the live GFSS score isn't tracked yet.
+- For forecasts, explain they are model-based with confidence intervals.
+- Format with short paragraphs or bullet points. Use markdown.
 
 LIVE DATA SNAPSHOT (JSON):
-${JSON.stringify(context).slice(0, 6000)}`;
+${JSON.stringify(context).slice(0, 8000)}`;
 
     const messages = [
       { role: "system", content: systemPrompt },
