@@ -1,123 +1,189 @@
-# GFCEIP — Global Financial Crisis Early-Warning & Economic Intelligence Platform
+# GFCEIP — Global Financial Crisis Early Intelligence Platform
 
-> Course-grade deliverable. Real public-API data → reproducible ML pipeline → deployable Python service → live web app with realtime updates and AI copilot.
-
----
-
-## 📦 What's in this repo
-
-```
-.
-├── notebooks/
-│   ├── build_notebook.py        ← run once to regenerate the .ipynb
-│   └── gfceip_ml.ipynb          ← ⭐ MAIN ML DELIVERABLE — open in Jupyter / VSCode
-├── python-service/              ← FastAPI + XGBoost inference service
-│   ├── app/main.py
-│   ├── app/artifacts/           ← model.pkl + metrics.json + plots (created by notebook)
-│   ├── tests/test_api.py
-│   ├── Dockerfile · Procfile · requirements.txt
-│   └── README.md
-├── docs/                        ← 📖 ALL EXPLANATION FOR THE TEACHER
-│   ├── ARCHITECTURE.md          ← system diagram + stack rationale
-│   ├── ML_REPORT.md             ← data, cleaning, labeling, model, validation
-│   ├── API_REFERENCE.md         ← every endpoint, request/response shape
-│   ├── DEMO_SCRIPT.md           ← 10-minute live demo script (read out loud)
-│   └── TEACHER_QA.md            ← 14 anticipated Q&A — practice these
-├── src/                         ← TanStack Start frontend (already running in Lovable)
-└── supabase/migrations/         ← Postgres schema + RLS
-```
+A real-time dashboard for global financial stability, country risk scoring (GFSS),
+alerts, AI macro copilot, and crisis-probability forecasting. Built on TanStack
+Start (React 19 + Vite 7) with a Supabase backend and an optional Python ML
+service for forecasts and pipeline refreshes.
 
 ---
 
-## 🚀 Quick start (VSCode workflow)
+## 1. Tech stack
 
-### 1) Frontend (already deployed in Lovable)
-Open the **Preview URL** at the top of this chat. All pages work out of the box.
+| Layer | Stack |
+|---|---|
+| Frontend | React 19, TanStack Start v1, TanStack Router, TanStack Query, Tailwind v4, shadcn/ui, Recharts |
+| Backend (in-app) | TanStack `createServerFn` + server routes under `src/routes/api/` |
+| Database / Auth / Realtime | Supabase (managed via Lovable Cloud) |
+| AI | Lovable AI Gateway (Gemini / GPT family) — keyed by `LOVABLE_API_KEY` |
+| ML service (optional) | FastAPI app under `python-service/` |
+| Package manager | Bun |
 
-### 2) Train the model
+---
+
+## 2. Prerequisites
+
+- **Node.js** ≥ 20 (only needed if you don't have Bun)
+- **Bun** ≥ 1.1 — install from https://bun.sh
+- **Python** ≥ 3.11 (only if you want to run the ML service)
+- A Supabase project (or use Lovable Cloud, which provisions one for you)
+
+---
+
+## 3. Environment variables
+
+Create a `.env` file in the project root (Lovable Cloud auto-generates this
+in the hosted environment — for local you fill it in manually):
+
+```env
+# --- Public (shipped to the browser) ---
+VITE_SUPABASE_URL=https://<your-project-ref>.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=<publishable / anon key>
+VITE_SUPABASE_PROJECT_ID=<your-project-ref>
+
+# --- Server-only (used by createServerFn / server routes) ---
+SUPABASE_URL=https://<your-project-ref>.supabase.co
+SUPABASE_PUBLISHABLE_KEY=<publishable / anon key>
+SUPABASE_SERVICE_ROLE_KEY=<service role key>     # NEVER expose to client
+LOVABLE_API_KEY=<lovable ai gateway key>          # for AI Copilot
+REFRESH_SHARED_SECRET=<long random string>        # for /api/public/hooks/refresh-pipeline
+
+# Optional — only if you run the Python ML service
+ML_API_KEY=<≥32 random chars>                     # auth for /predict, /metrics
+ALLOWED_ORIGINS=http://localhost:3000,https://gfceip.lovable.app
+```
+
+> Build secrets (e.g. private npm tokens) go in Workspace Settings → Build Secrets,
+> not `.env`.
+
+---
+
+## 4. Install & run (frontend)
+
 ```bash
-cd notebooks
-python build_notebook.py            # regenerates gfceip_ml.ipynb
-pip install jupyter pandas scikit-learn xgboost shap requests matplotlib seaborn
-jupyter notebook gfceip_ml.ipynb    # → Cell → Run All
+bun install
+bun run dev            # http://localhost:3000
 ```
-Artifacts (`model.pkl`, `metrics.json`, `roc_curve.png`, `shap_summary.png`, `confusion_matrix.png`) appear under `python-service/app/artifacts/`.
 
-### 3) Run the Python API
+Other commands:
+
+```bash
+bun run build          # production build
+bun run preview        # serve the production build
+bun run lint           # eslint
+```
+
+---
+
+## 5. Database setup
+
+All schema and seed data live under `supabase/migrations/`. Apply them in order
+to a fresh Supabase project:
+
+```bash
+# Option A: using the Supabase CLI
+supabase db push
+
+# Option B: paste each .sql file into the Supabase SQL editor in numeric order
+```
+
+The migrations create the public read tables (`countries`, `gfss_scores`,
+`alerts`, `economic_indicators`, `crisis_probabilities`, …), the `profiles`
+table, and the row-level security policies.
+
+---
+
+## 6. Optional — Python ML service
+
 ```bash
 cd python-service
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
+
+export ML_API_KEY=<same value as in .env>
+export REFRESH_SHARED_SECRET=<same value as in .env>
+export SUPABASE_URL=...
+export SUPABASE_SERVICE_ROLE_KEY=...
+
 uvicorn app.main:app --reload --port 8000
 ```
-Open <http://localhost:8000/docs> for live Swagger UI. Try `POST /predict`.
 
-### 4) Run the tests
-```bash
-cd python-service && pytest tests/ -v
+Endpoints (all require `x-api-key: $ML_API_KEY` except `/health`):
+
+| Method | Path | Purpose |
+|---|---|---|
+| GET | `/health` | Liveness probe (public) |
+| POST | `/predict` | Single crisis-probability prediction |
+| POST | `/predict/batch` | Batch predictions |
+| GET | `/metrics` | Model metrics |
+| POST | `/refresh` | Triggers the data refresh pipeline. Requires `x-refresh-secret: $REFRESH_SHARED_SECRET` header (NOT a query param). |
+
+---
+
+## 7. Security model (summary)
+
+- **Public-by-design tables**: `countries`, `gfss_scores`, `alerts`,
+  `economic_indicators`, `crisis_probabilities` — anonymous SELECT only,
+  no PII.
+- **Auth-only**: `askCopilot` server function. Rate-limited to 20 calls / 60s
+  per user.
+- **Service-role only**: `triggerRefresh` server function — wraps
+  `/api/public/hooks/refresh-pipeline` with the secret header so the secret
+  never reaches the browser.
+- **Webhook auth**: `/api/public/hooks/refresh-pipeline` requires
+  `x-refresh-secret` and uses constant-time byte comparison.
+- See `@security-memory` in the Lovable Cloud security panel for the full doc.
+
+---
+
+## 8. Project layout (high level)
+
+```
+src/
+├── routes/                  # File-based routes (pages + /api/* server routes)
+│   ├── __root.tsx           # Root layout + auth listener
+│   ├── index.tsx            # Landing page
+│   ├── dashboard.tsx        # Global dashboard
+│   ├── copilot.tsx          # AI Copilot chat
+│   ├── pakistan.tsx         # Country deep-dive
+│   ├── model.tsx            # ML model page (white chart bg)
+│   └── api/public/hooks/    # Webhook server routes
+├── lib/
+│   ├── copilot.functions.ts # AI Copilot serverFn (auth + rate-limit)
+│   ├── refresh.functions.ts # Authenticated wrapper around refresh webhook
+│   └── ...
+├── components/              # Reusable UI (shadcn-derived)
+├── integrations/supabase/   # AUTO-GENERATED — do not edit
+└── styles.css               # Design tokens (oklch palette, glass utilities)
+
+supabase/migrations/         # SQL schema + seeds
+python-service/              # Optional FastAPI ML service
+public/                      # Static assets + llms.txt + robots.txt
 ```
 
-### 5) (Optional) Deploy the API
-```bash
-docker build -t gfceip-ml python-service
-docker run -p 8000:8000 gfceip-ml
-```
-Or push to **Render / Railway / Fly.io** — Dockerfile + Procfile included.
+---
+
+## 9. Deploying
+
+The app is deployed on Lovable. The hosted URLs are:
+
+- Preview: `https://id-preview--58f21921-eaf7-44ce-b75f-132f06e1a1a8.lovable.app`
+- Production: `https://gfceip.lovable.app`
+
+To publish from local, push to your Lovable project — every commit triggers
+a fresh build & deploy.
 
 ---
 
-## 🧠 The Machine Learning, in one page
+## 10. Troubleshooting
 
-| Question | Answer |
+| Symptom | Fix |
 |---|---|
-| Data source | World Bank Open Data REST API (`api.worldbank.org/v2/`) |
-| Coverage | 33 countries × 8 indicators × 20 years (2004–2023) |
-| Cleaning | 6-step pipeline (ffill → interp → regional median → outlier clip) |
-| Label rule | Frankel-Rose / Kaminsky-Reinhart 5-trigger crisis definition |
-| Features | 8 raw + rolling mean/std + YoY deltas + region one-hots ≈ 40 features |
-| Model | XGBoost (`max_depth=4`, `lr=0.05`, `n_estimators=300`) |
-| Baseline compared | Logistic Regression (`class_weight="balanced"`) |
-| Validation | Stratified 5-Fold CV + held-out 20 % test set |
-| Metrics | Accuracy, Precision, Recall, F1, **ROC-AUC** |
-| Explainability | SHAP TreeExplainer (with permutation-importance fallback) |
-| Leakage prevention | All rolling features `.shift(1)`, stratified split, seeded |
-
-**Full report:** [`docs/ML_REPORT.md`](docs/ML_REPORT.md).
+| Copilot returns "AI service unavailable" | Check `LOVABLE_API_KEY` is set; tail server logs for the upstream error. |
+| Dashboard refresh shows "REFRESH_SHARED_SECRET is not configured" | Add it to `.env` and restart `bun run dev`. |
+| Build fails with "Failed to resolve import" | Run `bun install` again; ensure the imported file exists. |
+| Sign-in loops | Confirm `_authenticated/route.tsx` is intact and `attachSupabaseAuth` is in `src/start.ts`. |
+| ML service 401 | Send `x-api-key: $ML_API_KEY` on every call except `/health`. |
 
 ---
 
-## 🌐 Live web app pages
-
-| Route | Purpose |
-|---|---|
-| `/` | Landing, live ticker, vulnerability board |
-| `/dashboard` | 33-country stability board + **realtime** alerts (WebSocket) |
-| `/pakistan` | Country deep-dive — KPIs, 24-month trends, crisis matrix |
-| `/country/$slug` | Generic country page |
-| `/compare?a=…&b=…` | Side-by-side comparison |
-| `/simulator` | 8 sliders → live crisis probabilities (calls Python API or TS fallback) |
-| `/crisis-explorer` | Historical crisis catalogue |
-| `/copilot` | AI chat grounded in live DB (Gemini 2.5 Flash via Lovable AI Gateway) |
-
----
-
-## 📚 Read these before presenting
-
-1. **[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)** — the system diagram you'll show first.
-2. **[`docs/ML_REPORT.md`](docs/ML_REPORT.md)** — every methodological choice, justified.
-3. **[`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md)** — 10-minute step-by-step demo with what-to-say lines.
-4. **[`docs/TEACHER_QA.md`](docs/TEACHER_QA.md)** — 14 likely questions, with answers. Rehearse these.
-5. **[`docs/API_REFERENCE.md`](docs/API_REFERENCE.md)** — every endpoint, every payload shape.
-
----
-
-## 🔐 Security & reproducibility
-
-- All Supabase tables have **Row-Level Security**; writes only via service-role inside server functions.
-- LLM key (`LOVABLE_API_KEY`) read server-side only — never shipped to the browser.
-- Notebook seed is fixed (`np.random.seed(42)`) — your run reproduces exactly.
-- Pydantic validation on every FastAPI payload.
-
----
-
-**GFCEIP © 2026** — built for transparency in global macro risk.
+Built with ❤️ on [Lovable](https://lovable.dev).
