@@ -63,7 +63,7 @@ export const askCopilot = createServerFn({ method: "POST" })
       trend_30d: g.trend_30d,
     }));
 
-    const context = {
+    const snapshot = {
       countries_count: allScores.length,
       most_vulnerable: allScores.slice(0, 15),
       most_stable: [...allScores].reverse().slice(0, 10),
@@ -84,7 +84,7 @@ Guidelines:
 - Format with short paragraphs or bullet points. Use markdown.
 
 LIVE DATA SNAPSHOT (JSON):
-${JSON.stringify(context).slice(0, 8000)}`;
+${JSON.stringify(snapshot).slice(0, 8000)}`;
 
     const messages = [
       { role: "system", content: systemPrompt },
