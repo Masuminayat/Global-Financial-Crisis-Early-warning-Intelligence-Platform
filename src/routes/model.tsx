@@ -139,11 +139,11 @@ function ModelPage() {
               <ClientChart>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={top} layout="vertical" margin={{ left: 20, right: 24, top: 8, bottom: 8 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--chart-paper-foreground))" opacity={0.16} />
-                    <XAxis type="number" stroke="hsl(var(--chart-paper-foreground))" tick={{ fill: "hsl(var(--chart-paper-foreground))", fontSize: 11 }} tickFormatter={(v) => `${v}%`} />
-                    <YAxis type="category" dataKey="feature" stroke="hsl(var(--chart-paper-foreground))" tick={{ fill: "hsl(var(--chart-paper-foreground))", fontSize: 11 }} width={170} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-paper-foreground)" opacity={0.16} />
+                    <XAxis type="number" stroke="var(--chart-paper-foreground)" tick={{ fill: "var(--chart-paper-foreground)", fontSize: 11 }} tickFormatter={(v) => `${v}%`} />
+                    <YAxis type="category" dataKey="feature" stroke="var(--chart-paper-foreground)" tick={{ fill: "var(--chart-paper-foreground)", fontSize: 11 }} width={170} />
                     <Tooltip
-                      contentStyle={{ background: "hsl(var(--chart-paper))", border: "1px solid hsl(var(--border))", borderRadius: 6, fontSize: 12, color: "hsl(var(--chart-paper-foreground))" }}
+                      contentStyle={{ background: "var(--chart-paper)", border: "1px solid var(--border)", borderRadius: 6, fontSize: 12, color: "var(--chart-paper-foreground)" }}
                       formatter={(v: number) => [`${v}%`, "Impact"]}
                     />
                     <Bar dataKey="importance" radius={[0, 4, 4, 0]}>
