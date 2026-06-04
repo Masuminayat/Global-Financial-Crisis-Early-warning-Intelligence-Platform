@@ -188,7 +188,8 @@ def countries():
     }
 
 @app.post("/predict", response_model=PredictResponse)
-def predict(payload: Indicators):
+def predict(payload: Indicators, x_api_key: Optional[str] = Header(None)):
+    _require_api_key(x_api_key)
     if _MODEL is None:
         raise HTTPException(503, "Model not loaded. Run notebooks/gfceip_ml.ipynb first.")
     vec = _vectorize(payload)
@@ -201,7 +202,19 @@ def predict(payload: Indicators):
     )
 
 @app.post("/predict/batch")
-def predict_batch(payload: BatchRequest):
+def predict_batch(payload: BatchRequest, x_api_key: Optional[str] = Header(None)):
+    _require_api_key(x_api_key)
     if _MODEL is None:
         raise HTTPException(503, "Model not loaded.")
-    return {"results": [predict(item).model_dump() for item in payload.items]}
+    # Internal call — bypass the per-item header check by invoking the vectorizer directly
+    out = []
+    for item in payload.items:
+        vec = _vectorize(item)
+        proba = float(_MODEL.predict_proba(vec)[0, 1])
+        out.append(PredictResponse(
+            crisis_probability=round(proba, 4),
+            risk_level=_risk_level(proba),
+            model_version=_METRICS.get("model_version", "xgb-1.0"),
+            top_drivers=_top_drivers(vec),
+        ).model_dump())
+    return {"results": out}
