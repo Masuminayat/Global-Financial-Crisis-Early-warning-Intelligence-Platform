@@ -8,10 +8,35 @@ const inputSchema = z.object({
   history: z.array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().max(4000) })).max(20).default([]),
 });
 
+// Per-user sliding-window rate limit (best-effort, per worker instance).
+// Limits a single authenticated user to 20 Copilot calls per 60s.
+const RATE_LIMIT_MAX = 20;
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const rateLimitMap = new Map<string, number[]>();
+
+function checkRateLimit(userId: string) {
+  const now = Date.now();
+  const arr = (rateLimitMap.get(userId) ?? []).filter((t) => now - t < RATE_LIMIT_WINDOW_MS);
+  if (arr.length >= RATE_LIMIT_MAX) {
+    throw new Error("You're sending messages too quickly. Please wait a moment and try again.");
+  }
+  arr.push(now);
+  rateLimitMap.set(userId, arr);
+  if (rateLimitMap.size > 1000) {
+    for (const [k, v] of rateLimitMap) {
+      const fresh = v.filter((t) => now - t < RATE_LIMIT_WINDOW_MS);
+      if (fresh.length === 0) rateLimitMap.delete(k);
+      else rateLimitMap.set(k, fresh);
+    }
+  }
+}
+
 export const askCopilot = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => inputSchema.parse(d))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
+    checkRateLimit(context.userId);
+
     const apiKey = process.env.LOVABLE_API_KEY;
     if (!apiKey) throw new Error("LOVABLE_API_KEY not configured");
 
@@ -38,7 +63,7 @@ export const askCopilot = createServerFn({ method: "POST" })
       trend_30d: g.trend_30d,
     }));
 
-    const context = {
+    const snapshot = {
       countries_count: allScores.length,
       most_vulnerable: allScores.slice(0, 15),
       most_stable: [...allScores].reverse().slice(0, 10),
@@ -59,7 +84,7 @@ Guidelines:
 - Format with short paragraphs or bullet points. Use markdown.
 
 LIVE DATA SNAPSHOT (JSON):
-${JSON.stringify(context).slice(0, 8000)}`;
+${JSON.stringify(snapshot).slice(0, 8000)}`;
 
     const messages = [
       { role: "system", content: systemPrompt },

@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/AppShell";
@@ -7,6 +8,7 @@ import { categoryColor, fmtNum, severityDot } from "@/lib/format";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { ClientChart } from "@/components/ClientChart";
 import { formatCrisisType, sortRiskRows } from "@/lib/macro";
+import { triggerRefresh } from "@/lib/refresh.functions";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -102,12 +104,12 @@ function DashboardPage() {
     (acc[row.country_iso] ??= []).push(row);
     return acc;
   }, {}), [risks]);
+  const refresh = useServerFn(triggerRefresh);
   const runRefresh = async () => {
     setRefreshing(true);
     setRefreshMsg(null);
     try {
-      const r = await fetch("/api/public/hooks/refresh-pipeline", { method: "POST" });
-      const j = await r.json();
+      const j = await refresh();
       setRefreshMsg(`Refreshed ${j.countries_refreshed} countries · ${j.indicator_rows} indicator rows · ${j.alerts_emitted} alerts in ${(j.elapsed_ms / 1000).toFixed(1)}s`);
       await Promise.all([refetch()]);
     } catch (e) {
