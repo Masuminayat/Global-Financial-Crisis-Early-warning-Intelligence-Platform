@@ -108,6 +108,7 @@ function PakistanPage() {
         <div className="glass mt-8 rounded-lg overflow-hidden">
           <div className="border-b border-border px-5 py-3">
             <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Live Risk Output</h3>
+            <p className="mt-1 text-xs text-muted-foreground">Crisis probabilities from the macro-composite model across 6 / 12 / 24-month forecast horizons.</p>
           </div>
           <table className="w-full text-sm">
             <thead>
