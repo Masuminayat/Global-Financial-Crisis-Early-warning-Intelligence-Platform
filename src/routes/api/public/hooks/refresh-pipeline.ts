@@ -93,7 +93,19 @@ export const Route = createFileRoute('/api/public/hooks/refresh-pipeline')({
         // Fail-closed: require shared secret to be configured AND match
         const expected = process.env.REFRESH_SHARED_SECRET
         const provided = request.headers.get('x-refresh-secret')
-        if (!expected || !provided || provided !== expected) {
+        if (!expected || !provided) {
+          return new Response('Unauthorized', { status: 401 })
+        }
+        // Constant-time comparison to prevent timing side-channel attacks
+        const enc = new TextEncoder()
+        const a = enc.encode(expected)
+        const b = enc.encode(provided)
+        let mismatch = a.length ^ b.length
+        const len = Math.max(a.length, b.length)
+        for (let i = 0; i < len; i++) {
+          mismatch |= (a[i] ?? 0) ^ (b[i] ?? 0)
+        }
+        if (mismatch !== 0) {
           return new Response('Unauthorized', { status: 401 })
         }
 
