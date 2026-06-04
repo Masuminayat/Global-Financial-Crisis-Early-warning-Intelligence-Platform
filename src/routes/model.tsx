@@ -135,7 +135,7 @@ function ModelPage() {
             subtitle="Mean |SHAP value| per feature: the average magnitude each indicator pushes a country's predicted crisis probability up or down. Longer bars = larger average impact on individual predictions."
           >
             <div className="h-[420px]">
-              <ClientChart height={420}>
+              <ClientChart>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={top} layout="vertical" margin={{ left: 20, right: 24, top: 8, bottom: 8 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
