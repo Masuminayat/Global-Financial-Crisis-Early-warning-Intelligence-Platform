@@ -9,6 +9,7 @@ const NAV = [
   ["Compare", "/compare"],
   ["Simulator", "/simulator"],
   ["Crises", "/crisis-explorer"],
+  ["Model", "/model"],
   ["Copilot", "/copilot"],
 ] as const;
 
