@@ -185,5 +185,3 @@ a fresh build & deploy.
 | ML service 401 | Send `x-api-key: $ML_API_KEY` on every call except `/health`. |
 
 ---
-
-Built with ❤️ on [Lovable](https://lovable.dev).
