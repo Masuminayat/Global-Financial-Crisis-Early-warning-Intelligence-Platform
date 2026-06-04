@@ -104,38 +104,68 @@ function PakistanPage() {
           <ChartCard title="CPI Inflation %" data={cpiSeries} dataKey="cpi" color="var(--risk-high)" />
         </div>
 
-        {/* Crisis probabilities */}
-        <div className="glass mt-8 rounded-lg overflow-hidden">
-          <div className="border-b border-border px-5 py-3">
-            <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Live Risk Output</h3>
-            <p className="mt-1 text-xs text-muted-foreground">Crisis probabilities from the macro-composite model across 6 / 12 / 24-month forecast horizons.</p>
-          </div>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground">
-                <th className="px-5 py-2 font-normal">Crisis Type</th>
-                <th className="px-5 py-2 font-normal text-right">Probability</th>
-                <th className="px-5 py-2 font-normal text-right">Horizon</th>
-                <th className="px-5 py-2 font-normal text-right">Level</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sortRiskRows(risks as Array<{ crisis_type: string; horizon_months: number; probability: number; risk_level: string }>).map((risk) => (
-                <tr key={`${risk.crisis_type}-${risk.horizon_months}`} className="border-t border-border/50">
-                  <td className="px-5 py-3 capitalize">{formatCrisisType(risk.crisis_type)}</td>
-                  <td className={`num px-5 py-3 text-right ${riskLevelColor(risk.risk_level)}`}>{fmtNum(risk.probability * 100, 1)}%</td>
-                  <td className="num px-5 py-3 text-right text-muted-foreground">{risk.horizon_months}M</td>
-                  <td className={`px-5 py-3 text-right text-xs uppercase ${riskLevelColor(risk.risk_level)}`}>{risk.risk_level}</td>
-                </tr>
-              ))}
-              {risks.length === 0 && (
-                <tr className="border-t border-border/50">
-                  <td colSpan={4} className="px-5 py-6 text-center text-sm text-muted-foreground">No live risk rows available yet.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        {/* Crisis probabilities — pivoted: one row per crisis type, columns per horizon */}
+        {(() => {
+          const rows = risks as Array<{ crisis_type: string; horizon_months: number; probability: number; risk_level: string }>;
+          const horizons = [6, 12, 24];
+          const byType = new Map<string, Record<number, { probability: number; risk_level: string }>>();
+          for (const r of rows) {
+            if (!byType.has(r.crisis_type)) byType.set(r.crisis_type, {});
+            byType.get(r.crisis_type)![r.horizon_months] = { probability: r.probability, risk_level: r.risk_level };
+          }
+          const crisisOrder = Array.from(byType.keys()).sort((a, b) => {
+            const pa = byType.get(a)?.[12]?.probability ?? 0;
+            const pb = byType.get(b)?.[12]?.probability ?? 0;
+            return pb - pa;
+          });
+          return (
+            <div className="glass mt-8 rounded-lg overflow-hidden">
+              <div className="border-b border-border px-5 py-3">
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Live Risk Output</h3>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Crisis probability by forecast horizon. Each row is one crisis type; columns show the chance of it occurring within the next 6, 12, or 24 months.
+                </p>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground">
+                      <th className="px-5 py-2 font-normal">Crisis Type</th>
+                      {horizons.map((h) => (
+                        <th key={h} className="px-5 py-2 font-normal text-right">{h}M Horizon</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {crisisOrder.map((ct) => {
+                      const cells = byType.get(ct)!;
+                      return (
+                        <tr key={ct} className="border-t border-border/50">
+                          <td className="px-5 py-3 capitalize font-medium">{formatCrisisType(ct)}</td>
+                          {horizons.map((h) => {
+                            const c = cells[h];
+                            if (!c) return <td key={h} className="px-5 py-3 text-right text-muted-foreground">—</td>;
+                            return (
+                              <td key={h} className="px-5 py-3 text-right">
+                                <div className={`num ${riskLevelColor(c.risk_level)}`}>{fmtNum(c.probability * 100, 1)}%</div>
+                                <div className={`text-[10px] uppercase tracking-wider ${riskLevelColor(c.risk_level)}`}>{c.risk_level}</div>
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      );
+                    })}
+                    {rows.length === 0 && (
+                      <tr className="border-t border-border/50">
+                        <td colSpan={horizons.length + 1} className="px-5 py-6 text-center text-sm text-muted-foreground">No live risk rows available yet.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          );
+        })()}
 
         <div className="mt-8 flex flex-wrap gap-3">
           <Link to="/simulator" search={{ iso: "PK" }} className="rounded-md bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground ring-glow-cyan">
