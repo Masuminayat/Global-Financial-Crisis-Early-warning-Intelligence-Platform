@@ -143,10 +143,12 @@
     font-family: var(--font-sans);
     font-feature-settings: "cv11", "ss01";
     -webkit-font-smoothing: antialiased;
+    /* Static gradient (no background-attachment: fixed — that forces a full
+       repaint on every scroll frame, which is the #1 mobile scroll killer). */
     background-image:
       radial-gradient(ellipse 80% 50% at 50% -20%, oklch(0.30 0.10 195 / 0.15), transparent),
       radial-gradient(ellipse 60% 50% at 80% 110%, oklch(0.30 0.15 330 / 0.10), transparent);
-    background-attachment: fixed;
+    background-repeat: no-repeat;
   }
   .font-mono, code, kbd, pre, samp {
     font-family: var(--font-mono);
@@ -165,9 +167,10 @@
     border: 1px solid var(--border);
   }
   .glass-strong {
-    background: color-mix(in oklab, var(--surface-2) 88%, transparent);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    /* Solid translucent fill — backdrop-filter on a sticky element repaints
+       every scroll frame and is one of the most expensive properties on
+       mobile. Visually equivalent for an opaque-ish header. */
+    background: color-mix(in oklab, var(--surface-2) 96%, transparent);
     border: 1px solid var(--border);
   }
 
@@ -181,7 +184,9 @@
       0 0 28px -6px color-mix(in oklab, var(--cyan) 70%, transparent);
   }
 
-  /* Dotted/Grid background for hero & charts */
+  /* Dotted/Grid background for hero & charts.
+     mask-image is GPU-cheap on a static element but we keep it scoped to
+     small hero blocks only (do NOT apply to long scrolling sections). */
   .bg-grid {
     background-image:
       linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
@@ -194,13 +199,14 @@
     background-size: 18px 18px;
   }
 
-  /* Animated ticker */
+  /* Animated ticker — pause when offscreen to save CPU */
   .ticker-track {
     animation: ticker-scroll 60s linear infinite;
+    will-change: transform;
   }
   @keyframes ticker-scroll {
-    from { transform: translateX(0); }
-    to   { transform: translateX(-50%); }
+    from { transform: translate3d(0, 0, 0); }
+    to   { transform: translate3d(-50%, 0, 0); }
   }
 
   /* Pulse for live dot */
@@ -222,4 +228,17 @@
   /* Fade-in */
   .fade-in { animation: fade-in .5s ease-out both; }
   @keyframes fade-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+  /* Skip layout/paint work for offscreen sections — huge win on long pages.
+     Apply with class="cv-auto" on big section wrappers. */
+  .cv-auto {
+    content-visibility: auto;
+    contain-intrinsic-size: 1px 600px;
+  }
+
+  /* Respect user motion preferences — kills all decorative animation */
+  @media (prefers-reduced-motion: reduce) {
+    .ticker-track, .live-dot, .fade-in { animation: none !important; }
+    * { scroll-behavior: auto !important; }
+  }
 }
