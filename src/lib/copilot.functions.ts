@@ -66,7 +66,8 @@ ${JSON.stringify(context).slice(0, 6000)}`;
 
     if (!res.ok) {
       const t = await res.text();
-      throw new Error(`AI gateway error ${res.status}: ${t.slice(0, 200)}`);
+      console.error(`[Copilot] AI gateway ${res.status}:`, t.slice(0, 500));
+      throw new Error("The AI service is temporarily unavailable. Please try again.");
     }
     const json = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
     const reply = json.choices?.[0]?.message?.content ?? "(no response)";
