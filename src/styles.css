@@ -155,17 +155,19 @@
 }
 
 @layer utilities {
-  /* Glass card */
+  /* Glass card — solid translucent fill (no backdrop blur).
+     backdrop-filter on dozens of cards causes severe scroll jank,
+     especially on mobile. Keep blur only on the sticky header. */
   .glass {
     background: linear-gradient(180deg,
-      color-mix(in oklab, var(--surface-1) 85%, transparent),
-      color-mix(in oklab, var(--surface-2) 80%, transparent));
-    backdrop-filter: blur(12px);
+      color-mix(in oklab, var(--surface-1) 96%, transparent),
+      color-mix(in oklab, var(--surface-2) 94%, transparent));
     border: 1px solid var(--border);
   }
   .glass-strong {
-    background: color-mix(in oklab, var(--surface-2) 92%, transparent);
-    backdrop-filter: blur(16px);
+    background: color-mix(in oklab, var(--surface-2) 88%, transparent);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     border: 1px solid var(--border);
   }
 
