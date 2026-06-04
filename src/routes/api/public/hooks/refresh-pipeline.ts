@@ -90,13 +90,11 @@ export const Route = createFileRoute('/api/public/hooks/refresh-pipeline')({
     handlers: {
       POST: async ({ request }) => {
         const t0 = Date.now()
-        // optional secret check
+        // Fail-closed: require shared secret to be configured AND match
         const expected = process.env.REFRESH_SHARED_SECRET
-        if (expected) {
-          const provided = request.headers.get('x-refresh-secret')
-          if (provided !== expected) {
-            return new Response('Unauthorized', { status: 401 })
-          }
+        const provided = request.headers.get('x-refresh-secret')
+        if (!expected || !provided || provided !== expected) {
+          return new Response('Unauthorized', { status: 401 })
         }
 
         const year = new Date().getUTCFullYear()

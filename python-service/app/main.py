@@ -129,8 +129,8 @@ def refresh(secret: Optional[str] = None):
     """Re-fetch World Bank data, re-score all countries, push real predictions to Supabase."""
     import os as _os
     expected = _os.environ.get("REFRESH_SHARED_SECRET", "")
-    if expected and secret != expected:
-        raise HTTPException(401, "invalid refresh secret")
+    if not expected or not secret or secret != expected:
+        raise HTTPException(401, "Unauthorized")
     from pathlib import Path as _P
     import sys as _sys
     _sys.path.insert(0, str(_P(__file__).resolve().parents[1]))
