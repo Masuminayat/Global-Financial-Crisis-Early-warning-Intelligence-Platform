@@ -1,0 +1,210 @@
+[
+  {
+    "feature": "current_account_pct_gdp",
+    "importance": 0.17551013827323914
+  },
+  {
+    "feature": "gdp_growth",
+    "importance": 0.09318304806947708
+  },
+  {
+    "feature": "current_account_pct_gdp_lag1",
+    "importance": 0.08766372501850128
+  },
+  {
+    "feature": "reserves_yoy",
+    "importance": 0.04235236346721649
+  },
+  {
+    "feature": "growth_yoy_chg",
+    "importance": 0.030219219624996185
+  },
+  {
+    "feature": "current_account_pct_gdp_ma3",
+    "importance": 0.028165196999907494
+  },
+  {
+    "feature": "cpi_yoy_chg",
+    "importance": 0.024067020043730736
+  },
+  {
+    "feature": "reg_SSA",
+    "importance": 0.019532177597284317
+  },
+  {
+    "feature": "reserves_usd",
+    "importance": 0.01854933612048626
+  },
+  {
+    "feature": "gdp_growth_ma3",
+    "importance": 0.016375169157981873
+  },
+  {
+    "feature": "cpi_inflation",
+    "importance": 0.01590690389275551
+  },
+  {
+    "feature": "govt_debt_pct_gdp_lag1",
+    "importance": 0.01589430496096611
+  },
+  {
+    "feature": "gdp_growth_lag1",
+    "importance": 0.014588028192520142
+  },
+  {
+    "feature": "real_interest_rate_lag1",
+    "importance": 0.013588698580861092
+  },
+  {
+    "feature": "reserves_usd_ma3",
+    "importance": 0.013378928415477276
+  },
+  {
+    "feature": "govt_debt_pct_gdp_ma3",
+    "importance": 0.013265670277178288
+  },
+  {
+    "feature": "cpi_inflation_ma3",
+    "importance": 0.013071888126432896
+  },
+  {
+    "feature": "cpi_inflation_d1",
+    "importance": 0.012749536894261837
+  },
+  {
+    "feature": "govt_debt_pct_gdp_std3",
+    "importance": 0.01273260172456503
+  },
+  {
+    "feature": "real_interest_rate_d1",
+    "importance": 0.012628404423594475
+  },
+  {
+    "feature": "govt_debt_pct_gdp",
+    "importance": 0.012555042281746864
+  },
+  {
+    "feature": "gdp_growth_std3",
+    "importance": 0.01238367147743702
+  },
+  {
+    "feature": "govt_debt_pct_gdp_d1",
+    "importance": 0.012226925231516361
+  },
+  {
+    "feature": "cpi_inflation_std3",
+    "importance": 0.012168669141829014
+  },
+  {
+    "feature": "cpi_inflation_lag1",
+    "importance": 0.011983825825154781
+  },
+  {
+    "feature": "reg_LAC",
+    "importance": 0.011907263658940792
+  },
+  {
+    "feature": "exports_pct_gdp_d1",
+    "importance": 0.01182712335139513
+  },
+  {
+    "feature": "debt_yoy_chg",
+    "importance": 0.011797874234616756
+  },
+  {
+    "feature": "real_interest_rate_std3",
+    "importance": 0.0116474824026227
+  },
+  {
+    "feature": "unemployment",
+    "importance": 0.011628110893070698
+  },
+  {
+    "feature": "current_account_pct_gdp_d1",
+    "importance": 0.011541820131242275
+  },
+  {
+    "feature": "real_interest_rate",
+    "importance": 0.011467157863080502
+  },
+  {
+    "feature": "reserves_usd_std3",
+    "importance": 0.011362043209373951
+  },
+  {
+    "feature": "reserves_usd_lag1",
+    "importance": 0.011176222003996372
+  },
+  {
+    "feature": "reserves_usd_d1",
+    "importance": 0.01110792625695467
+  },
+  {
+    "feature": "exports_pct_gdp",
+    "importance": 0.011063703335821629
+  },
+  {
+    "feature": "current_account_pct_gdp_std3",
+    "importance": 0.010876690037548542
+  },
+  {
+    "feature": "exports_pct_gdp_ma3",
+    "importance": 0.010767500847578049
+  },
+  {
+    "feature": "exports_pct_gdp_lag1",
+    "importance": 0.010622401721775532
+  },
+  {
+    "feature": "unemployment_d1",
+    "importance": 0.010466614738106728
+  },
+  {
+    "feature": "unemployment_std3",
+    "importance": 0.010319441556930542
+  },
+  {
+    "feature": "real_interest_rate_ma3",
+    "importance": 0.010225352831184864
+  },
+  {
+    "feature": "reg_MEA",
+    "importance": 0.010184751823544502
+  },
+  {
+    "feature": "unemployment_ma3",
+    "importance": 0.01016484759747982
+  },
+  {
+    "feature": "exports_pct_gdp_std3",
+    "importance": 0.010146772488951683
+  },
+  {
+    "feature": "unemployment_lag1",
+    "importance": 0.009513557888567448
+  },
+  {
+    "feature": "reg_SAS",
+    "importance": 0.009502299129962921
+  },
+  {
+    "feature": "gdp_growth_d1",
+    "importance": 0.00932368915528059
+  },
+  {
+    "feature": "reg_EUR",
+    "importance": 0.009227936156094074
+  },
+  {
+    "feature": "reg_EAS",
+    "importance": 0.007390984799712896
+  },
+  {
+    "feature": "reg_ECA",
+    "importance": 0.0
+  },
+  {
+    "feature": "reg_NAC",
+    "importance": 0.0
+  }
+]
