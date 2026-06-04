@@ -7,10 +7,11 @@ from __future__ import annotations
 import json
 import pickle
 from pathlib import Path
+import os
 from typing import Optional
 
 import numpy as np
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -21,12 +22,30 @@ app = FastAPI(
     version="1.0.0",
     description="Crisis early-warning predictions powered by XGBoost.",
 )
+
+# Restrict CORS to known frontend origins. Override via ALLOWED_ORIGINS env
+# (comma-separated). Defaults cover the Lovable preview/published domains.
+_default_origins = (
+    "https://gfceip.lovable.app,"
+    "https://id-preview--58f21921-eaf7-44ce-b75f-132f06e1a1a8.lovable.app,"
+    "https://project--58f21921-eaf7-44ce-b75f-132f06e1a1a8.lovable.app,"
+    "https://project--58f21921-eaf7-44ce-b75f-132f06e1a1a8-dev.lovable.app"
+)
+_allowed = [o.strip() for o in os.environ.get("ALLOWED_ORIGINS", _default_origins).split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=_allowed,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "x-api-key", "x-refresh-secret"],
 )
+
+
+def _require_api_key(x_api_key: Optional[str]) -> None:
+    expected = os.environ.get("ML_API_KEY", "")
+    if not expected or not x_api_key or x_api_key != expected:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
 
 # ---- model loader ----------------------------------------------------------
 _MODEL = None
@@ -119,17 +138,21 @@ def health():
     }
 
 @app.get("/metrics")
-def metrics():
+def metrics(x_api_key: Optional[str] = Header(None)):
+    _require_api_key(x_api_key)
     if not _METRICS:
         raise HTTPException(404, "metrics.json not found — train the model first")
     return _METRICS
 
 @app.post("/refresh")
-def refresh(secret: Optional[str] = None):
+def refresh(x_refresh_secret: Optional[str] = Header(None)):
     """Re-fetch World Bank data, re-score all countries, push real predictions to Supabase."""
-    import os as _os
-    expected = _os.environ.get("REFRESH_SHARED_SECRET", "")
-    if not expected or not secret or secret != expected:
+    expected = os.environ.get("REFRESH_SHARED_SECRET", "")
+    # Constant-time comparison to prevent timing side-channel attacks
+    if not expected or not x_refresh_secret:
+        raise HTTPException(401, "Unauthorized")
+    import hmac as _hmac
+    if not _hmac.compare_digest(expected, x_refresh_secret):
         raise HTTPException(401, "Unauthorized")
     from pathlib import Path as _P
     import sys as _sys
@@ -137,8 +160,11 @@ def refresh(secret: Optional[str] = None):
     from refresh_pipeline import run as _run  # noqa: E402
     try:
         return _run(retrain=False)
-    except Exception as e:
-        raise HTTPException(500, f"refresh failed: {e}")
+    except Exception:
+        # Avoid leaking internal exception details to callers
+        import logging
+        logging.exception("refresh pipeline failed")
+        raise HTTPException(500, "refresh failed")
 
 
 @app.get("/indicators")
@@ -162,7 +188,8 @@ def countries():
     }
 
 @app.post("/predict", response_model=PredictResponse)
-def predict(payload: Indicators):
+def predict(payload: Indicators, x_api_key: Optional[str] = Header(None)):
+    _require_api_key(x_api_key)
     if _MODEL is None:
         raise HTTPException(503, "Model not loaded. Run notebooks/gfceip_ml.ipynb first.")
     vec = _vectorize(payload)
@@ -175,7 +202,19 @@ def predict(payload: Indicators):
     )
 
 @app.post("/predict/batch")
-def predict_batch(payload: BatchRequest):
+def predict_batch(payload: BatchRequest, x_api_key: Optional[str] = Header(None)):
+    _require_api_key(x_api_key)
     if _MODEL is None:
         raise HTTPException(503, "Model not loaded.")
-    return {"results": [predict(item).model_dump() for item in payload.items]}
+    # Internal call — bypass the per-item header check by invoking the vectorizer directly
+    out = []
+    for item in payload.items:
+        vec = _vectorize(item)
+        proba = float(_MODEL.predict_proba(vec)[0, 1])
+        out.append(PredictResponse(
+            crisis_probability=round(proba, 4),
+            risk_level=_risk_level(proba),
+            model_version=_METRICS.get("model_version", "xgb-1.0"),
+            top_drivers=_top_drivers(vec),
+        ).model_dump())
+    return {"results": out}
