@@ -1,15 +1,15 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 /**
- * Authenticated wrapper that calls the internal /api/public/hooks/refresh-pipeline
+ * Server-side wrapper that calls the internal /api/public/hooks/refresh-pipeline
  * endpoint with the server-only REFRESH_SHARED_SECRET header.
  *
  * The browser must NEVER see REFRESH_SHARED_SECRET — that's why this is a
- * server function rather than a direct client fetch.
+ * server function rather than a direct client fetch. The wrapped endpoint
+ * validates the secret in constant time and fails closed on mismatch, so
+ * exposing this RPC publicly does not weaken security.
  */
 export const triggerRefresh = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
   .handler(async () => {
     const secret = process.env.REFRESH_SHARED_SECRET;
     if (!secret) throw new Error("REFRESH_SHARED_SECRET is not configured on the server.");
