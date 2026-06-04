@@ -1,27 +1,33 @@
 import { createServerFn } from "@tanstack/react-start";
+import { getRequestHeader } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const inputSchema = z.object({
   message: z.string().min(1).max(2000),
   history: z.array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().max(4000) })).max(20).default([]),
 });
 
-// Per-user sliding-window rate limit (best-effort, per worker instance).
-// Limits a single authenticated user to 20 Copilot calls per 60s.
-const RATE_LIMIT_MAX = 20;
+// Per-caller sliding-window rate limit (best-effort, per worker instance).
+// Keyed by client IP since the Copilot is public. 15 requests / 60s per IP.
+const RATE_LIMIT_MAX = 15;
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const rateLimitMap = new Map<string, number[]>();
 
-function checkRateLimit(userId: string) {
+function getClientKey(): string {
+  const xff = getRequestHeader("x-forwarded-for");
+  const cf = getRequestHeader("cf-connecting-ip");
+  return (cf || xff?.split(",")[0]?.trim() || "anonymous").slice(0, 64);
+}
+
+function checkRateLimit(key: string) {
   const now = Date.now();
-  const arr = (rateLimitMap.get(userId) ?? []).filter((t) => now - t < RATE_LIMIT_WINDOW_MS);
+  const arr = (rateLimitMap.get(key) ?? []).filter((t) => now - t < RATE_LIMIT_WINDOW_MS);
   if (arr.length >= RATE_LIMIT_MAX) {
     throw new Error("You're sending messages too quickly. Please wait a moment and try again.");
   }
   arr.push(now);
-  rateLimitMap.set(userId, arr);
+  rateLimitMap.set(key, arr);
   if (rateLimitMap.size > 1000) {
     for (const [k, v] of rateLimitMap) {
       const fresh = v.filter((t) => now - t < RATE_LIMIT_WINDOW_MS);
@@ -32,10 +38,9 @@ function checkRateLimit(userId: string) {
 }
 
 export const askCopilot = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
   .inputValidator((d) => inputSchema.parse(d))
-  .handler(async ({ data, context }) => {
-    checkRateLimit(context.userId);
+  .handler(async ({ data }) => {
+    checkRateLimit(getClientKey());
 
     const apiKey = process.env.LOVABLE_API_KEY;
     if (!apiKey) throw new Error("LOVABLE_API_KEY not configured");
