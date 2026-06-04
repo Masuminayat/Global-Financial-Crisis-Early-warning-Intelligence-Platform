@@ -104,12 +104,12 @@ function DashboardPage() {
     (acc[row.country_iso] ??= []).push(row);
     return acc;
   }, {}), [risks]);
+  const refresh = useServerFn(triggerRefresh);
   const runRefresh = async () => {
     setRefreshing(true);
     setRefreshMsg(null);
     try {
-      const r = await fetch("/api/public/hooks/refresh-pipeline", { method: "POST" });
-      const j = await r.json();
+      const j = await refresh();
       setRefreshMsg(`Refreshed ${j.countries_refreshed} countries · ${j.indicator_rows} indicator rows · ${j.alerts_emitted} alerts in ${(j.elapsed_ms / 1000).toFixed(1)}s`);
       await Promise.all([refetch()]);
     } catch (e) {
