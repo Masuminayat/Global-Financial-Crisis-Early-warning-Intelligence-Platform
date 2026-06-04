@@ -138,17 +138,21 @@ def health():
     }
 
 @app.get("/metrics")
-def metrics():
+def metrics(x_api_key: Optional[str] = Header(None)):
+    _require_api_key(x_api_key)
     if not _METRICS:
         raise HTTPException(404, "metrics.json not found — train the model first")
     return _METRICS
 
 @app.post("/refresh")
-def refresh(secret: Optional[str] = None):
+def refresh(x_refresh_secret: Optional[str] = Header(None)):
     """Re-fetch World Bank data, re-score all countries, push real predictions to Supabase."""
-    import os as _os
-    expected = _os.environ.get("REFRESH_SHARED_SECRET", "")
-    if not expected or not secret or secret != expected:
+    expected = os.environ.get("REFRESH_SHARED_SECRET", "")
+    # Constant-time comparison to prevent timing side-channel attacks
+    if not expected or not x_refresh_secret:
+        raise HTTPException(401, "Unauthorized")
+    import hmac as _hmac
+    if not _hmac.compare_digest(expected, x_refresh_secret):
         raise HTTPException(401, "Unauthorized")
     from pathlib import Path as _P
     import sys as _sys
@@ -156,8 +160,11 @@ def refresh(secret: Optional[str] = None):
     from refresh_pipeline import run as _run  # noqa: E402
     try:
         return _run(retrain=False)
-    except Exception as e:
-        raise HTTPException(500, f"refresh failed: {e}")
+    except Exception:
+        # Avoid leaking internal exception details to callers
+        import logging
+        logging.exception("refresh pipeline failed")
+        raise HTTPException(500, "refresh failed")
 
 
 @app.get("/indicators")
