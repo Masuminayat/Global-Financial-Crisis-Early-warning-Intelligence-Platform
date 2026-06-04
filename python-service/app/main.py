@@ -7,10 +7,11 @@ from __future__ import annotations
 import json
 import pickle
 from pathlib import Path
+import os
 from typing import Optional
 
 import numpy as np
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -21,12 +22,30 @@ app = FastAPI(
     version="1.0.0",
     description="Crisis early-warning predictions powered by XGBoost.",
 )
+
+# Restrict CORS to known frontend origins. Override via ALLOWED_ORIGINS env
+# (comma-separated). Defaults cover the Lovable preview/published domains.
+_default_origins = (
+    "https://gfceip.lovable.app,"
+    "https://id-preview--58f21921-eaf7-44ce-b75f-132f06e1a1a8.lovable.app,"
+    "https://project--58f21921-eaf7-44ce-b75f-132f06e1a1a8.lovable.app,"
+    "https://project--58f21921-eaf7-44ce-b75f-132f06e1a1a8-dev.lovable.app"
+)
+_allowed = [o.strip() for o in os.environ.get("ALLOWED_ORIGINS", _default_origins).split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=_allowed,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "x-api-key", "x-refresh-secret"],
 )
+
+
+def _require_api_key(x_api_key: Optional[str]) -> None:
+    expected = os.environ.get("ML_API_KEY", "")
+    if not expected or not x_api_key or x_api_key != expected:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
 
 # ---- model loader ----------------------------------------------------------
 _MODEL = None
