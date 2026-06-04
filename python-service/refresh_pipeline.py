@@ -262,7 +262,7 @@ def upsert_db(feat: pd.DataFrame, feature_cols: list[str], model, model_version:
         ]
 
     # Horizon scaling: short-term less likely, longer-term more likely.
-    HORIZONS = [(3, 0.45), (6, 0.72), (12, 1.00), (24, 1.30)]
+    HORIZONS = [(6, 0.65), (12, 1.00), (24, 1.35)]
 
     for _, r in latest.iterrows():
         iso3 = r["iso3"]
